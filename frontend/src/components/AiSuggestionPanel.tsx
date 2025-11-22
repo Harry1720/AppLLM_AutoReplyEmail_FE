@@ -1,0 +1,226 @@
+'use client';
+
+import { useState } from 'react';
+import { Email } from '@/types/email';
+
+interface AiSuggestionPanelProps {
+  email: Email;
+  onSendReply: (content: string) => void;
+  onRegenerateAi: (emailId: string) => void;
+}
+
+// Mock AI suggestions based on email content
+const getAiSuggestion = (email: Email): string => {
+  if (email.subject.toLowerCase().includes('meeting')) {
+    return `Hi ${email.sender.split(' ')[0]},
+
+Thank you for reaching out. I'd be happy to meet with you tomorrow to discuss the project proposal.
+
+I'm available between 2:30 PM and 3:30 PM. Would that work for you? If not, please let me know alternative times that suit your schedule.
+
+Looking forward to our discussion.
+
+Best regards`;
+  } else if (email.subject.toLowerCase().includes('update')) {
+    return `Hi ${email.sender.split(' ')[0]},
+
+Thank you for your email. Here's the current project status update:
+
+1. Current progress: 75% completed
+2. No major blockers at this time
+3. Expected completion: End of next week
+
+I'll send you a more detailed report by end of day as requested.
+
+Best regards`;
+  } else if (email.subject.toLowerCase().includes('collaboration')) {
+    return `Hi ${email.sender.split(' ')[0]},
+
+Thank you for reaching out about the collaboration opportunity. This sounds very interesting and aligns well with our current initiatives.
+
+I would be happy to schedule a call next week to discuss this further. I'm available:
+- Tuesday, 2-4 PM
+- Wednesday, 10 AM-12 PM
+- Thursday, 3-5 PM
+
+Please let me know what works best for you.
+
+Looking forward to our conversation.
+
+Best regards`;
+  }
+  
+  return `Hi ${email.sender.split(' ')[0]},
+
+Thank you for your email. I appreciate you reaching out.
+
+I'll review this carefully and get back to you shortly with a detailed response.
+
+Best regards`;
+};
+
+export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }: AiSuggestionPanelProps) {
+  const [aiSuggestion, setAiSuggestion] = useState(getAiSuggestion(email));
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(aiSuggestion);
+
+  const handleRegenerate = () => {
+    // Simulate AI regeneration with slight variation
+    const baseSuggestion = getAiSuggestion(email);
+    const variations = [
+      baseSuggestion,
+      baseSuggestion.replace('Thank you for your email', 'I appreciate your message'),
+      baseSuggestion.replace('Best regards', 'Kind regards'),
+      baseSuggestion.replace('I would be happy to', 'I\'d be glad to'),
+    ];
+    const newSuggestion = variations[Math.floor(Math.random() * variations.length)];
+    setAiSuggestion(newSuggestion);
+    setEditedContent(newSuggestion);
+    onRegenerateAi(email.id);
+  };
+
+  const handleSend = () => {
+    onSendReply(editedContent);
+    setIsEditing(false);
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditedContent(aiSuggestion);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedContent(aiSuggestion);
+  };
+
+  const handleSaveEdit = () => {
+    setAiSuggestion(editedContent);
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex items-center space-x-2 mb-2">
+          <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            AI Assistant
+          </h2>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Smart reply suggestions powered by AI
+        </p>
+      </div>
+
+      {/* AI Suggestion Content */}
+      <div className="flex-1 p-4">
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+              Suggested Reply
+            </h3>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                High confidence
+              </span>
+            </div>
+          </div>
+          
+          <div className="relative">
+            <textarea
+              value={isEditing ? editedContent : aiSuggestion}
+              onChange={(e) => setEditedContent(e.target.value)}
+              readOnly={!isEditing}
+              className={`w-full h-64 p-3 border border-gray-200 dark:border-gray-600 rounded-lg resize-none text-sm ${
+                isEditing
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+              placeholder="AI suggestion will appear here..."
+            />
+            {!isEditing && (
+              <button
+                onClick={handleEdit}
+                className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                title="Edit suggestion"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {isEditing ? (
+            <div className="flex space-x-2">
+              <button
+                onClick={handleSaveEdit}
+                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={handleSend}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                <span>Send Reply</span>
+              </button>
+              
+              <button
+                onClick={handleRegenerate}
+                className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Regenerate Suggestion</span>
+              </button>
+              
+              <button
+                onClick={() => setAiSuggestion('')}
+                className="w-full border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Clear Draft</span>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-gray-200 dark:border-gray-700 p-3">
+        <div className="flex items-center justify-center space-x-1 text-xs text-gray-500 dark:text-gray-400">
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>AI suggestions are powered by advanced language models</span>
+        </div>
+      </div>
+    </div>
+  );
+}
