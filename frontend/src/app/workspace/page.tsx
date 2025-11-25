@@ -1,100 +1,139 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Email } from '@/types/email';
 import EmailList from '@/components/EmailList';
 import EmailContent from '@/components/EmailContent';
 import AiSuggestionPanel from '@/components/AiSuggestionPanel';
 import Header from '@/components/Header';
-
-// Mock data
-const mockEmails: Email[] = [
-  {
-    id: '1',
-    sender: 'John Doe',
-    senderEmail: 'john@example.com',
-    subject: 'Meeting Request for Tomorrow',
-    snippet: 'Hi there, I would like to schedule a meeting with you tomorrow to discuss...',
-    body: `Hi there,
-
-I would like to schedule a meeting with you tomorrow to discuss the new project proposal. 
-
-Could you please let me know your availability between 2 PM and 4 PM?
-
-Best regards,
-John Doe`,
-    timestamp: '2024-11-22T10:30:00Z',
-    hasAiSuggestion: true,
-    isRead: false
-  },
-  {
-    id: '2',
-    sender: 'Sarah Wilson',
-    senderEmail: 'sarah@company.com',  
-    subject: 'Project Update Required',
-    snippet: 'Hello, I need an update on the current status of the project. Could you...',
-    body: `Hello,
-
-I need an update on the current status of the project. Could you please provide me with:
-
-1. Current progress percentage
-2. Any blockers or issues
-3. Expected completion date
-
-Please reply by end of day.
-
-Thanks,
-Sarah Wilson`,
-    timestamp: '2024-11-22T09:15:00Z',
-    hasAiSuggestion: true,
-    isRead: false
-  },
-  {
-    id: '3',
-    sender: 'Mike Chen',
-    senderEmail: 'mike@startup.io',
-    subject: 'Collaboration Opportunity',
-    snippet: 'We are interested in exploring a potential collaboration with your team...',
-    body: `Hi,
-
-We are interested in exploring a potential collaboration with your team for our upcoming product launch.
-
-Would you be available for a call next week to discuss this further?
-
-Best,
-Mike Chen
-CEO, Startup Inc.`,
-    timestamp: '2024-11-21T16:45:00Z',
-    hasAiSuggestion: false,
-    isRead: true
-  }
-];
+import { fetchEmails, getAuthToken, getUserInfo } from '@/services/api';
 
 export default function WorkspacePage() {
-  const [emails, setEmails] = useState<Email[]>(mockEmails);
-  const [selectedEmail, setSelectedEmail] = useState<Email | null>(
-    mockEmails.length > 0 ? mockEmails[0] : null
-  );
+  const router = useRouter();
+  const [emails, setEmails] = useState<Email[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const token = getAuthToken();
+    const userInfo = getUserInfo();
+
+    if (!token || !userInfo) {
+      // Redirect to landing page if not authenticated
+      router.push('/');
+      return;
+    }
+
+    // Fetch emails from backend
+    loadEmails();
+  }, [router]);
+
+  const loadEmails = async (pageToken?: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const data = await fetchEmails(20, pageToken);
+      
+      // Transform backend email format to frontend format
+      const transformedEmails: Email[] = data.emails.map((email: any) => ({
+        id: email.id,
+        sender: 'Unknown', // Backend doesn't return sender name yet
+        senderEmail: '', // Backend doesn't return sender email yet
+        subject: email.subject || '(No Subject)',
+        snippet: email.snippet || '',
+        body: email.snippet || '', // Will need to fetch full body separately
+        timestamp: new Date().toISOString(), // Backend doesn't return timestamp yet
+        hasAiSuggestion: false,
+        isRead: false
+      }));
+
+      setEmails(transformedEmails);
+      setNextPageToken(data.next_page_token);
+      
+      // Auto-select first email if available
+      if (transformedEmails.length > 0) {
+        setSelectedEmail(transformedEmails[0]);
+      }
+    } catch (err: any) {
+      console.error('Error loading emails:', err);
+      setError(err.message || 'Không thể tải email. Vui lòng thử lại.');
+      
+      // If authentication error, redirect to login
+      if (err.message.includes('Authentication')) {
+        setTimeout(() => {
+          router.push('/');
+        }, 2000);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleEmailSelect = (email: Email) => {
     setSelectedEmail(email);
     // Mark as read
-    setEmails(prev => prev.map(e => 
+    setEmails((prev: Email[]) => prev.map((e: Email) => 
       e.id === email.id ? { ...e, isRead: true } : e
     ));
   };
 
   const handleSendReply = (content: string) => {
     console.log('Sending reply:', content);
-    // Here you would integrate with email API
+    // TODO: Integrate with backend send email API
     alert('Email đã được gửi thành công!');
   };
 
   const handleRegenerateAi = (emailId: string) => {
     console.log('Regenerating AI suggestion for:', emailId);
-    // Here you would call AI service
+    // TODO: Integrate with AI service
     alert('Gợi ý AI đã được tạo lại!');
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="h-screen flex flex-col bg-gray-50">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải email...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-screen flex flex-col bg-gray-50">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Lỗi tải dữ liệu</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={() => loadEmails()}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+            >
+              Thử lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -108,7 +147,7 @@ export default function WorkspacePage() {
               Hộp thư
             </h2>
             <p className="text-sm text-gray-500">
-              {emails.filter(e => !e.isRead).length} chưa đọc
+              {emails.filter((e: Email) => !e.isRead).length} chưa đọc
             </p>
           </div>
           <div className="flex-1 overflow-y-auto">

@@ -1,18 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 export default function LandingPage() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
     setIsLoading(true);
-    // Simulate authentication process
-    setTimeout(() => {
-      router.push('/workspace');
-    }, 1500);
+    
+    // Google OAuth URL with all required parameters
+    const googleAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+      client_id: '280948850816-0s5nb712jucaa3c7v5jam0ub32c4hkgt.apps.googleusercontent.com',
+      redirect_uri: 'http://localhost:3000/auth/callback',
+      response_type: 'code',
+      scope: 'email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
+      access_type: 'offline',
+      prompt: 'consent'
+    }).toString();
+    
+    // Redirect to Google OAuth
+    window.location.href = googleAuthUrl;
   };
 
   return (
