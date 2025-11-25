@@ -102,19 +102,19 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700 p-4">
+      <div className="border-b border-gray-200 p-4">
         <div className="flex items-center space-x-2 mb-2">
           <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            AI Assistant
+          <h2 className="text-lg font-semibold text-gray-900">
+            Trợ lý AI
           </h2>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Smart reply suggestions powered by AI
+        <p className="text-sm text-gray-500">
+          Gợi ý trả lời thông minh bởi AI
         </p>
       </div>
 
@@ -122,15 +122,9 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
       <div className="flex-1 p-4">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-              Suggested Reply
+            <h3 className="text-sm font-medium text-gray-900">
+              Gợi ý trả lời
             </h3>
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                High confidence
-              </span>
-            </div>
           </div>
           
           <div className="relative">
@@ -138,18 +132,18 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
               value={isEditing ? editedContent : aiSuggestion}
               onChange={(e) => setEditedContent(e.target.value)}
               readOnly={!isEditing}
-              className={`w-full h-64 p-3 border border-gray-200 dark:border-gray-600 rounded-lg resize-none text-sm ${
+              className={`w-full h-64 p-3 border border-gray-200 rounded-lg resize-none text-sm ${
                 isEditing
-                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
-                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  ? 'bg-white text-gray-900'
+                  : 'bg-gray-50 text-gray-700'
               } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              placeholder="AI suggestion will appear here..."
+              placeholder="Gợi ý của AI sẽ hiển thị ở đây..."
             />
             {!isEditing && (
               <button
                 onClick={handleEdit}
-                className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                title="Edit suggestion"
+                className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600"
+                title="Chỉnh sửa gợi ý"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -167,13 +161,13 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
                 onClick={handleSaveEdit}
                 className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
-                Save Changes
+                Lưu thay đổi
               </button>
               <button
                 onClick={handleCancelEdit}
-                className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                Hủy
               </button>
             </div>
           ) : (
@@ -185,27 +179,27 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
-                <span>Send Reply</span>
+                <span>Gửi trả lời</span>
               </button>
               
               <button
                 onClick={handleRegenerate}
-                className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center space-x-2"
+                className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span>Regenerate Suggestion</span>
+                <span>Tạo lại gợi ý</span>
               </button>
               
               <button
                 onClick={() => setAiSuggestion('')}
-                className="w-full border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center justify-center space-x-2"
+                className="w-full border border-red-300 text-red-600 py-2 px-4 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center space-x-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                <span>Clear Draft</span>
+                <span>Xóa bản nháp</span>
               </button>
             </>
           )}
@@ -213,12 +207,12 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-3">
-        <div className="flex items-center justify-center space-x-1 text-xs text-gray-500 dark:text-gray-400">
+      <div className="border-t border-gray-200 p-3">
+        <div className="flex items-center justify-center space-x-1 text-xs text-gray-500">
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>AI suggestions are powered by advanced language models</span>
+          <span>Gợi ý AI được hỗ trợ bởi Llama3</span>
         </div>
       </div>
     </div>

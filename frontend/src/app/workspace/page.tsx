@@ -87,28 +87,28 @@ export default function WorkspacePage() {
   const handleSendReply = (content: string) => {
     console.log('Sending reply:', content);
     // Here you would integrate with email API
-    alert('Email sent successfully!');
+    alert('Email đã được gửi thành công!');
   };
 
   const handleRegenerateAi = (emailId: string) => {
     console.log('Regenerating AI suggestion for:', emailId);
     // Here you would call AI service
-    alert('AI suggestion regenerated!');
+    alert('Gợi ý AI đã được tạo lại!');
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-gray-50">
       <Header />
       
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Email List */}
-        <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Inbox
+        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Hộp thư
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {emails.filter(e => !e.isRead).length} unread
+            <p className="text-sm text-gray-500">
+              {emails.filter(e => !e.isRead).length} chưa đọc
             </p>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -121,18 +121,18 @@ export default function WorkspacePage() {
         </div>
 
         {/* Middle Panel - Email Content */}
-        <div className="flex-1 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+        <div className="flex-1 bg-white border-r border-gray-200">
           {selectedEmail ? (
             <EmailContent email={selectedEmail} />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+            <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center">
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No email selected</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Choose an email from the list to view its content
+                <h3 className="mt-2 text-sm font-medium text-gray-900">Chưa chọn email</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Chọn một email từ danh sách để xem nội dung
                 </p>
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function WorkspacePage() {
         </div>
 
         {/* Right Panel - AI Suggestions */}
-        <div className="w-96 bg-white dark:bg-gray-800">
+        <div className="w-96 bg-white">
           {selectedEmail ? (
             <AiSuggestionPanel 
               email={selectedEmail}
@@ -148,14 +148,14 @@ export default function WorkspacePage() {
               onRegenerateAi={handleRegenerateAi}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+            <div className="h-full flex items-center justify-center text-gray-500">
               <div className="text-center px-4">
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">AI Assistant</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Select an email to get AI-powered reply suggestions
+                <h3 className="mt-2 text-sm font-medium text-gray-900">Trợ lý AI</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Chọn email để nhận gợi ý trả lời từ AI
                 </p>
               </div>
             </div>

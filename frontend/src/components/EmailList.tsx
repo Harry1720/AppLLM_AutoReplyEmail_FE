@@ -34,14 +34,14 @@ export default function EmailList({ emails, selectedEmail, onEmailSelect }: Emai
   };
 
   return (
-    <div className="divide-y divide-gray-200 dark:divide-gray-700">
+    <div className="divide-y divide-gray-200">
       {emails.map((email) => (
         <div
           key={email.id}
           onClick={() => onEmailSelect(email)}
-          className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+          className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
             selectedEmail?.id === email.id 
-              ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-blue-500' 
+              ? 'bg-blue-50 border-r-2 border-blue-500' 
               : ''
           }`}
         >
@@ -52,8 +52,8 @@ export default function EmailList({ emails, selectedEmail, onEmailSelect }: Emai
               }`} />
               <span className={`font-medium truncate ${
                 email.isRead 
-                  ? 'text-gray-700 dark:text-gray-300' 
-                  : 'text-gray-900 dark:text-white'
+                  ? 'text-gray-700' 
+                  : 'text-gray-900'
               }`}>
                 {email.sender}
               </span>
@@ -63,20 +63,20 @@ export default function EmailList({ emails, selectedEmail, onEmailSelect }: Emai
                 </span>
               )}
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 ml-2">
+            <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
               {formatTime(email.timestamp)}
             </span>
           </div>
           
           <h3 className={`text-sm mb-1 truncate ${
             email.isRead 
-              ? 'text-gray-700 dark:text-gray-300' 
-              : 'text-gray-900 dark:text-white font-medium'
+              ? 'text-gray-700' 
+              : 'text-gray-900 font-medium'
           }`}>
             {email.subject}
           </h3>
           
-          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+          <p className="text-xs text-gray-500 line-clamp-2">
             {email.snippet}
           </p>
         </div>
