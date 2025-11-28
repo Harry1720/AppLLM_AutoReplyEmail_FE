@@ -1,12 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import { fetchUserProfile, updateUserProfile, deleteUserAccount, logout, getAuthToken } from '@/services/api';
 
 export default function SettingsPage() {
   const router = useRouter();
+  interface UserProfile {
+    id: string;
+    email: string;
+    name: string;
+    picture?: string;
+  }
+
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [isSaving, setSaving] = useState(false);
+
+  useEffect(() => {
+    // Check authentication
+    const token = getAuthToken();
+    if (!token) {
+      router.push('/');
+      return;
+    }
+
+    // Load user profile
+    loadUserProfile();
+  }, [router]);
+
+  const loadUserProfile = async () => {
+    try {
+      setIsLoading(true);
+      const profile = await fetchUserProfile();
+      setUserProfile(profile);
+      setEditName(profile.name || '');
+    } catch (error: unknown) {
+      console.error('Error loading user profile:', error);
+      if (error instanceof Error && error.message.includes('Authentication')) {
+        router.push('/');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSyncEmails = async () => {
     setIsSyncing(true);
@@ -17,8 +58,41 @@ export default function SettingsPage() {
     }, 2000);
   };
 
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true);
+      await updateUserProfile(editName, userProfile?.picture);
+      if (userProfile) {
+        setUserProfile({ ...userProfile, name: editName });
+      }
+      setIsEditing(false);
+      alert('Cập nhật thông tin thành công!');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra';
+      alert('Lỗi: ' + errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm('Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác!')) {
+      return;
+    }
+
+    try {
+      await deleteUserAccount();
+      alert('Tài khoản đã được xóa thành công.');
+      router.push('/');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra';
+      alert('Lỗi: ' + errorMessage);
+    }
+  };
+
   const handleLogout = () => {
     if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+      logout();
       router.push('/');
     }
   };
@@ -45,22 +119,80 @@ export default function SettingsPage() {
               <h2 className="text-lg font-medium text-gray-900 mb-4">
                 Thông tin người dùng
               </h2>
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-medium text-xl">U</span>
+              {isLoading ? (
+                <div className="animate-pulse flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-300 rounded w-1/2"></div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Người dùng
-                  </h3>
-                  <p className="text-gray-500">
-                    user@example.com
-                  </p>
-                  <p className="text-sm text-green-600 mt-1">
-                    ✓ Đã kết nối với Gmail
-                  </p>
-                </div>
-              </div>
+              ) : userProfile ? (
+                <>
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                      {userProfile.picture ? (
+                        <img src={userProfile.picture} alt={userProfile.name} className="w-full h-full rounded-full" />
+                      ) : (
+                        <span className="text-white font-medium text-xl">
+                          {userProfile.name?.charAt(0).toUpperCase() || 'U'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="text-lg font-medium text-gray-900 border border-gray-300 rounded px-2 py-1 w-full"
+                        />
+                      ) : (
+                        <h3 className="text-lg font-medium text-gray-900">
+                          {userProfile.name || 'Người dùng'}
+                        </h3>
+                      )}
+                      <p className="text-gray-500">
+                        {userProfile.email}
+                      </p>
+                      <p className="text-sm text-green-600 mt-1">
+                        ✓ Đã kết nối với Gmail
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleSaveProfile}
+                          disabled={isSaving}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {isSaving ? 'Đang lưu...' : 'Lưu'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditName(userProfile.name || '');
+                          }}
+                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                        >
+                          Hủy
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                      >
+                        Chỉnh sửa
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-red-600">Không thể tải thông tin người dùng</p>
+              )}
             </div>
 
             {/* Email Sync */}
@@ -131,8 +263,18 @@ export default function SettingsPage() {
                   </svg>
                   Đăng xuất
                 </button>
+                
+                <button
+                  onClick={handleDeleteAccount}
+                  className="inline-flex items-center px-4 py-2 border border-red-600 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Xóa tài khoản
+                </button>
               </div>
-              <div className="text-center">
+              <div className="text-center mt-4">
                 <button
                   onClick={() => router.push('/workspace')}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

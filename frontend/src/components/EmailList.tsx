@@ -47,9 +47,9 @@ export default function EmailList({ emails, selectedEmail, onEmailSelect }: Emai
         >
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center space-x-2 min-w-0 flex-1">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              {/* <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                 email.isRead ? 'bg-transparent' : 'bg-blue-500'
-              }`} />
+              }`} /> */}
               <span className={`font-medium truncate ${
                 email.isRead 
                   ? 'text-gray-700' 

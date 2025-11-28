@@ -10,7 +10,7 @@ export default function LandingPage() {
     
     // Google OAuth URL with all required parameters
         const googleAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
-          client_id: '694151169429-npd01fboscl9uonfjklvca951vhclork.apps.googleusercontent.com', // Dùng client_id từ .env
+          client_id: '280948850816-0s5nb712jucaa3c7v5jam0ub32c4hkgt.apps.googleusercontent.com', // Dùng client_id từ .env
           redirect_uri: 'http://localhost:3000/auth/callback',
           response_type: 'code',
           scope: 'email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',

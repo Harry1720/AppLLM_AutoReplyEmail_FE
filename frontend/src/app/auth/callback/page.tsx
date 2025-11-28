@@ -42,9 +42,10 @@ export default function AuthCallbackPage() {
         
         // Redirect to workspace
         router.push('/workspace');
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Authentication error:', err);
-        setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+        const errorMessage = err instanceof Error ? err.message : 'Đăng nhập thất bại. Vui lòng thử lại.';
+        setError(errorMessage);
         setIsProcessing(false);
         setTimeout(() => {
           router.push('/');

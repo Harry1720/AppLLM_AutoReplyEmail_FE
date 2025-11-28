@@ -22,8 +22,16 @@ export const removeAuthToken = () => {
   }
 };
 
+// User interface for localStorage
+interface UserInfo {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+}
+
 // Store user info
-export const setUserInfo = (user: any) => {
+export const setUserInfo = (user: UserInfo) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('user_info', JSON.stringify(user));
   }
@@ -118,7 +126,7 @@ export const fetchEmails = async (limit: number = 10, pageToken?: string) => {
 };
 
 // Send email
-export const sendEmail = async (to: string, subject: string, body: string) => {
+export const sendEmail = async (to: string, subject: string, body: string, files?: File[]) => {
   const token = getAuthToken();
   
   if (!token) {
@@ -126,12 +134,25 @@ export const sendEmail = async (to: string, subject: string, body: string) => {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/emails/send?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, {
+    const formData = new FormData();
+    formData.append('to', to);
+    formData.append('subject', subject);
+    formData.append('body', body);
+    
+    // Add files if provided
+    if (files && files.length > 0) {
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+    }
+
+    const response = await fetch(`${API_BASE_URL}/emails/send`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        // Don't set Content-Type header - browser will set it automatically with boundary for FormData
       },
+      body: formData,
     });
 
     if (!response.ok) {
@@ -171,6 +192,147 @@ export const deleteEmail = async (messageId: string) => {
     return await response.json();
   } catch (error) {
     console.error('Error deleting email:', error);
+    throw error;
+  }
+};
+
+// Fetch email detail
+export const fetchEmailDetail = async (messageId: string) => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/emails/${messageId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        removeAuthToken();
+        removeUserInfo();
+        throw new Error('Authentication expired. Please login again.');
+      }
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch email detail');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching email detail:', error);
+    throw error;
+  }
+};
+
+// Fetch user profile
+export const fetchUserProfile = async () => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        removeAuthToken();
+        removeUserInfo();
+        throw new Error('Authentication expired. Please login again.');
+      }
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch user profile');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw error;
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (name: string, picture?: string) => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, picture }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        removeAuthToken();
+        removeUserInfo();
+        throw new Error('Authentication expired. Please login again.');
+      }
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update user profile');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+};
+
+// Delete user account
+export const deleteUserAccount = async () => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        removeAuthToken();
+        removeUserInfo();
+        throw new Error('Authentication expired. Please login again.');
+      }
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to delete user account');
+    }
+
+    // Clear local storage after successful deletion
+    removeAuthToken();
+    removeUserInfo();
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting user account:', error);
     throw error;
   }
 };
