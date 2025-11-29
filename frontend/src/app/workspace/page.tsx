@@ -7,7 +7,7 @@ import EmailList from '@/components/EmailList';
 import EmailContent from '@/components/EmailContent';
 import AiSuggestionPanel from '@/components/AiSuggestionPanel';
 import Header from '@/components/Header';
-import { fetchEmails, fetchEmailDetail, getAuthToken, getUserInfo } from '@/services/api';
+import { fetchEmails, fetchEmailDetail, getAuthToken, getUserInfo, sendEmail } from '@/services/api';
 
 export default function WorkspacePage() {
   const router = useRouter();
@@ -165,10 +165,28 @@ export default function WorkspacePage() {
     }
   };
 
-  const handleSendReply = (content: string) => {
-    console.log('Sending reply:', content);
-    // TODO: Integrate with backend send email API
-    alert('Email đã được gửi thành công!');
+  const handleSendReply = async (content: string) => {
+    if (!selectedEmail) return;
+    
+    try {
+      // Extract reply subject - add "Re: " prefix if not already present
+      const replySubject = selectedEmail.subject.startsWith('Re: ') 
+        ? selectedEmail.subject 
+        : `Re: ${selectedEmail.subject}`;
+      
+      // Send email using API
+      await sendEmail(
+        selectedEmail.senderEmail,
+        replySubject,
+        content
+      );
+      
+      alert('Email đã được gửi thành công!');
+    } catch (err) {
+      console.error('Error sending reply:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Không thể gửi email. Vui lòng thử lại.';
+      alert(`Lỗi gửi email: ${errorMessage}`);
+    }
   };
 
   const handleRegenerateAi = (emailId: string) => {
