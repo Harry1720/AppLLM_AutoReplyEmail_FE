@@ -45,18 +45,27 @@ export default function WorkspacePage() {
         threadId?: string;
         subject?: string;
         snippet?: string;
-        from?: string;         // Thêm field này (backend phải trả về)
-        date?: string;         // hoặc internalDate (timestamp dạng string/number)
+        from?: string;
+        date?: string;
         labelIds?: string[];
       }
 
       const transformedEmails: Email[] = data.emails.map((email: EmailFromAPI) => {
-        // Parse "From" header: "Nguyen Van A <nguyen.a@gmail.com>"
+        // Parse "From" header: "Nguyen Van A <nguyen.a@gmail.com>" hoặc "\"Bảo Huỳnh\" <baohuynh4107@gmail.com>"
         const parseFrom = (fromHeader?: string) => {
           if (!fromHeader) return { name: 'Unknown', email: '' };
-          const match = fromHeader.match(/.+?<(.+?)>/) || fromHeader.match(/([^<]+)/);
-          const emailAddr = match ? match[1]?.trim() || fromHeader.trim() : '';
-          const name = fromHeader.replace(/<.*>/, '').trim() || emailAddr.split('@')[0];
+          
+          // Extract email address
+          const emailMatch = fromHeader.match(/<(.+?)>/);
+          const emailAddr = emailMatch ? emailMatch[1].trim() : fromHeader.trim();
+          
+          // Extract name and remove quotes
+          let name = fromHeader.replace(/<.*>/, '').trim();
+          // Remove surrounding quotes (both single and double)
+          name = name.replace(/^["']|["']$/g, '');
+          // If name is empty, use email username
+          name = name || emailAddr.split('@')[0];
+          
           return { name: name || 'Unknown', email: emailAddr };
         };
 
@@ -68,8 +77,8 @@ export default function WorkspacePage() {
           senderEmail: senderEmail,
           subject: email.subject?.trim() || '(No Subject)',
           snippet: email.snippet || '',
-          body: email.snippet || '', // Đúng: tạm dùng snippet, sẽ fetch full body riêng khi mở email
-          timestamp: email.date || new Date().toISOString(), // Backend nên trả về date/internalDate
+          body: email.snippet || '',
+          timestamp: email.date || new Date().toISOString(),
           hasAiSuggestion: false,
           // isRead: !email.labelIds?.includes('UNREAD'), // Gmail dùng label UNREAD để đánh dấu chưa đọc
         };
@@ -77,10 +86,6 @@ export default function WorkspacePage() {
       setEmails(transformedEmails);
       setNextPageToken(data.next_page_token);
       
-      // Auto-select first email if available
-      // if (transformedEmails.length > 0) {
-      //   setSelectedEmail(transformedEmails[0]);
-      // }
     } catch (err: unknown) {
       console.error('Error loading emails:', err);
       const errorMessage = err instanceof Error ? err.message : 'Không thể tải email. Vui lòng thử lại.';
@@ -99,30 +104,48 @@ export default function WorkspacePage() {
 
   const handleEmailSelect = async (email: Email) => {
     try {
-      // Fetch full email detail from backend
       const detailResponse = await fetchEmailDetail(email.id);
       const emailDetail = detailResponse.data;
 
-      // Hàm parse "From" header – dùng lại được cho cả list và detail
       const parseFrom = (fromHeader?: string) => {
-      if (!fromHeader) return { name: 'Unknown', email: '' };
+        if (!fromHeader) return { name: 'Unknown', email: '' };
+        
+        // Extract email address
+        const emailMatch = fromHeader.match(/<(.+?)>/);
+        const emailAddr = emailMatch ? emailMatch[1].trim() : fromHeader.trim();
+        
+        // Extract name and remove quotes
+        let name = fromHeader.replace(/<.*>/, '').trim();
+        // Remove surrounding quotes (both single and double)
+        name = name.replace(/^["']|["']$/g, '');
+        // Remove escaped quotes
+        name = name.replace(/\\"/g, '"');
+        // If name is empty, use email username
+        name = name || emailAddr.split('@')[0];
+        
+        return { name: name || 'Unknown', email: emailAddr };
+      };
 
-      const match = fromHeader.match(/<(.+)>/);
-      const emailAddr = match ? match[1] : fromHeader.trim();
-      const name = fromHeader.replace(/<.+>/g, '').trim() || emailAddr.split('@')[0];
+      const { name: senderName, email: senderEmail } = parseFrom(emailDetail.from);
+      
+      // Extract body - ưu tiên HTML, fallback về plain text
+      let body = emailDetail.body || emailDetail.snippet || '';
+      
+      // Nếu body là object với parts (multipart email)
+      if (typeof body === 'object' && body.parts) {
+        // Tìm HTML part trước
+        const htmlPart = body.parts.find((p: { mimeType: string }) => p.mimeType === 'text/html');
+        const textPart = body.parts.find((p: { mimeType: string }) => p.mimeType === 'text/plain');
+        body = htmlPart?.body || textPart?.body || emailDetail.snippet || '';
+      }
 
-      return { name: name || 'Unknown', email: emailAddr };
-    };
-
-    const { name: senderName, email: senderEmail } = parseFrom(emailDetail.from);
-      // Update email with full details
       const fullEmail: Email = {
         id: email.id,
         sender: senderName || 'Unknown',
         senderEmail: senderEmail || '',
         subject: emailDetail.subject || '(No Subject)',
         snippet: emailDetail.snippet || '',
-        body: emailDetail.body || emailDetail.snippet || '',
+        body: body,
         timestamp: emailDetail.date || email.timestamp,
         hasAiSuggestion: false,
         isRead: true
@@ -130,13 +153,11 @@ export default function WorkspacePage() {
       
       setSelectedEmail(fullEmail);
       
-      // Mark as read
       setEmails((prev: Email[]) => prev.map((e: Email) => 
         e.id === email.id ? { ...e, isRead: true } : e
       ));
     } catch (err) {
       console.error('Error loading email detail:', err);
-      // Fallback to basic email if detail fetch fails
       setSelectedEmail(email);
       setEmails((prev: Email[]) => prev.map((e: Email) => 
         e.id === email.id ? { ...e, isRead: true } : e
@@ -197,9 +218,13 @@ export default function WorkspacePage() {
     );
   }
 
+  const handleSyncFromHeader = () => {
+    loadEmails(); // Reload emails
+  };
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <Header />
+      <Header onSync={handleSyncFromHeader}/>
       
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Email List */}
@@ -231,9 +256,9 @@ export default function WorkspacePage() {
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Chưa chọn email</h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">Email của bạn</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Chọn một email từ danh sách để xem nội dung
+                  Chọn một email từ danh sách để xem nội dung chi tiết
                 </p>
               </div>
             </div>
@@ -241,7 +266,7 @@ export default function WorkspacePage() {
         </div>
 
         {/* Right Panel - AI Suggestions */}
-        <div className="flex-1 bg-white">
+        <div className="flex-1 max-w-120 bg-white">
           {selectedEmail ? (
             <AiSuggestionPanel 
               email={selectedEmail}
@@ -256,7 +281,7 @@ export default function WorkspacePage() {
                 </svg>
                 <h3 className="mt-2 text-sm font-medium text-gray-900">Trợ lý AI</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Chọn email để nhận gợi ý trả lời từ AI
+                  Nhận gợi ý trả lời email từ AI
                 </p>
               </div>
             </div>

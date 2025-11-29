@@ -1,24 +1,86 @@
 'use client';
 
 import { Email } from '@/types/email';
+import { useEffect, useRef } from 'react';
+import DOMPurify from 'dompurify';
 
 interface EmailContentProps {
   email: Email;
 }
 
 export default function EmailContent({ email }: EmailContentProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
   const formatDateTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
+    return date.toLocaleString('vi-VN', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: false
     });
   };
+
+  // Sanitize và render HTML content
+  const getSanitizedHTML = (html: string) => {
+    // Cấu hình DOMPurify để cho phép các thẻ cần thiết
+    const config = {
+      ALLOWED_TAGS: [
+        'p', 'br', 'strong', 'b', 'i', 'em', 'u', 'a', 'img', 
+        'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'blockquote', 'table', 'thead', 'tbody', 'tr', 'td', 'th',
+        'div', 'span', 'pre', 'code'
+      ],
+      ALLOWED_ATTR: [
+        'href', 'src', 'alt', 'title', 'class', 'style',
+        'width', 'height', 'target', 'rel'
+      ],
+      ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    };
+
+    return DOMPurify.sanitize(html, config);
+  };
+
+  // Xử lý styles cho email content
+  useEffect(() => {
+    if (contentRef.current) {
+      // Reset các styles không mong muốn
+      const emailBody = contentRef.current;
+      
+      // Remove inline styles có thể gây lỗi layout
+      const elements = emailBody.querySelectorAll('*');
+      elements.forEach(el => {
+        const element = el as HTMLElement;
+        // Loại bỏ các style có thể làm vỡ layout
+        if (element.style.position === 'absolute' || element.style.position === 'fixed') {
+          element.style.position = 'relative';
+        }
+        if (element.style.width && parseInt(element.style.width) > 800) {
+          element.style.width = '100%';
+        }
+      });
+
+      // Xử lý links - mở trong tab mới
+      const links = emailBody.querySelectorAll('a');
+      links.forEach(link => {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      });
+
+      // Xử lý images - responsive
+      const images = emailBody.querySelectorAll('img');
+      images.forEach(img => {
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+      });
+    }
+  }, [email.body]);
+
+  // Kiểm tra xem content có phải HTML không
+  const isHTML = email.body.trim().startsWith('<');
 
   return (
     <div className="h-full flex flex-col">
@@ -55,11 +117,21 @@ export default function EmailContent({ email }: EmailContentProps) {
 
       {/* Email Body */}
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="prose max-w-none">
-          <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-            {email.body}
+        {isHTML ? (
+          <div 
+            ref={contentRef}
+            className="email-content"
+            dangerouslySetInnerHTML={{ 
+              __html: getSanitizedHTML(email.body) 
+            }}
+          />
+        ) : (
+          <div className="prose max-w-none">
+            <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+              {email.body}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Action Buttons */}

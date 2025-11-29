@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
-import { fetchUserProfile, updateUserProfile, deleteUserAccount, logout, getAuthToken } from '@/services/api';
+import { fetchUserProfile, fetchEmails, deleteUserAccount, logout, getAuthToken } from '@/services/api';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -17,9 +17,9 @@ export default function SettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [isSaving, setSaving] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
   useEffect(() => {
     // Check authentication
@@ -50,28 +50,22 @@ export default function SettingsPage() {
   };
 
   const handleSyncEmails = async () => {
-    setIsSyncing(true);
-    // Simulate email sync
-    setTimeout(() => {
-      setIsSyncing(false);
-      alert('Đồng bộ email thành công!');
-    }, 2000);
-  };
-
-  const handleSaveProfile = async () => {
     try {
-      setSaving(true);
-      await updateUserProfile(editName, userProfile?.picture);
-      if (userProfile) {
-        setUserProfile({ ...userProfile, name: editName });
-      }
-      setIsEditing(false);
-      alert('Cập nhật thông tin thành công!');
+      setIsSyncing(true);
+      
+      // Fetch emails để trigger sync với Gmail
+      await fetchEmails(50); // Tải 50 emails mới nhất
+      
+      // Cập nhật thời gian sync
+      setLastSyncTime(new Date());
+      
+      alert('Đồng bộ email thành công!');
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra';
+      console.error('Error syncing emails:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi đồng bộ';
       alert('Lỗi: ' + errorMessage);
     } finally {
-      setSaving(false);
+      setIsSyncing(false);
     }
   };
 
@@ -95,6 +89,17 @@ export default function SettingsPage() {
       logout();
       router.push('/');
     }
+  };
+
+  const formatLastSyncTime = () => {
+    return lastSyncTime.toLocaleString('vi-VN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: false
+    });
   };
 
   return (
@@ -140,18 +145,9 @@ export default function SettingsPage() {
                       )}
                     </div>
                     <div className="flex-1">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="text-lg font-medium text-gray-900 border border-gray-300 rounded px-2 py-1 w-full"
-                        />
-                      ) : (
-                        <h3 className="text-lg font-medium text-gray-900">
-                          {userProfile.name || 'Người dùng'}
-                        </h3>
-                      )}
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {userProfile.name || 'Người dùng'}
+                      </h3>
                       <p className="text-gray-500">
                         {userProfile.email}
                       </p>
@@ -159,35 +155,6 @@ export default function SettingsPage() {
                         ✓ Đã kết nối với Gmail
                       </p>
                     </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    {isEditing ? (
-                      <>
-                        <button
-                          onClick={handleSaveProfile}
-                          disabled={isSaving}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                        >
-                          {isSaving ? 'Đang lưu...' : 'Lưu'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsEditing(false);
-                            setEditName(userProfile.name || '');
-                          }}
-                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                        >
-                          Hủy
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                      >
-                        Chỉnh sửa
-                      </button>
-                    )}
                   </div>
                 </>
               ) : (
@@ -207,7 +174,7 @@ export default function SettingsPage() {
                       Lần đồng bộ cuối
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {new Date().toLocaleString()}
+                      {formatLastSyncTime()}
                     </p>
                   </div>
                   <button
@@ -239,11 +206,8 @@ export default function SettingsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div className="ml-3">
-                      {/* <h3 className="text-sm font-medium text-blue-800">
-                        Tự động đồng bộ đã bật
-                      </h3> */}
                       <p className="mt-1 text-sm text-blue-700">
-                        Email của bạn được tự động đồng bộ mỗi 15 phút
+                        Nhấn nút "Đồng bộ ngay" để cập nhật email mới nhất.
                       </p>
                     </div>
                   </div>
@@ -288,8 +252,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-
-        {/* Back to Workspace */}
       </div>
     </div>
   );

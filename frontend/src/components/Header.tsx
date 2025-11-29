@@ -1,19 +1,70 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { fetchUserProfile, fetchEmails, logout, getAuthToken } from '@/services/api';
 
-export default function Header() {
+interface HeaderProps {
+  onSync?: () => void;
+}
+
+export default function Header({ onSync }: HeaderProps = {}) {
   const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [userProfile, setUserProfile] = useState<{
+    id: string;
+    email: string;
+    name: string;
+    picture?: string;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        return;
+      }
+      
+      const profile = await fetchUserProfile();
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSettingsClick = () => {
+    setShowUserMenu(false);
     router.push('/settings');
   };
 
   const handleLogout = () => {
-    // Handle logout logic
-    router.push('/');
+    setShowUserMenu(false);
+    if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+      logout();
+      router.push('/');
+    }
+  };
+
+  const handleSync = async () => {
+    try {
+      setIsSyncing(true);
+      await fetchEmails(50);
+      if (onSync) {
+        onSync();
+      }
+    } catch (error) {
+      console.error('Error syncing:', error);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -44,54 +95,115 @@ export default function Header() {
         {/* Right side actions */}
         <div className="flex items-center space-x-4">
           {/* Sync button */}
-          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+            title="Đồng bộ email"
+          >
+            <svg 
+              className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
 
           {/* User menu */}
           <div className="relative">
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-700">U</span>
+            {isLoading ? (
+              <div className="flex items-center space-x-2 p-2">
+                <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
               </div>
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                <div className="py-1">
-                  <div className="px-4 py-2 text-sm text-gray-500 border-b border-gray-200">
-                    <p className="font-medium text-gray-900">Người dùng</p>
-                    <p>user@example.com</p>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden">
+                    {userProfile?.picture ? (
+                      <img 
+                        src={userProfile.picture} 
+                        alt={userProfile.name} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-medium text-white">
+                        {userProfile?.name?.charAt(0).toUpperCase() || 'U'}
+                      </span>
+                    )}
                   </div>
-                  <button
-                    onClick={handleSettingsClick}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>Cài đặt</span>
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center space-x-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span>Đăng xuất</span>
-                  </button>
-                </div>
-              </div>
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {showUserMenu && (
+                  <>
+                    {/* Backdrop để đóng menu khi click bên ngoài */}
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setShowUserMenu(false)}
+                    ></div>
+                    
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+                      <div className="py-1">
+                        {/* User Info Header */}
+                        <div className="px-4 py-3 border-b border-gray-200">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                              {userProfile?.picture ? (
+                                <img 
+                                  src={userProfile.picture} 
+                                  alt={userProfile.name} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-white font-medium">
+                                  {userProfile?.name?.charAt(0).toUpperCase() || 'U'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 truncate">
+                                {userProfile?.name || 'Người dùng'}
+                              </p>
+                              <p className="text-sm text-gray-500 truncate">
+                                {userProfile?.email || 'email@example.com'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Menu Items */}
+                        <button
+                          onClick={handleSettingsClick}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span>Cài đặt</span>
+                        </button>
+                        
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center space-x-2 border-t border-gray-200"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          <span>Đăng xuất</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>

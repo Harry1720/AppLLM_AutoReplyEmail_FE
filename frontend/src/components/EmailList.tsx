@@ -16,17 +16,17 @@ export default function EmailList({ emails, selectedEmail, onEmailSelect }: Emai
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     
     if (days === 0) {
-      return date.toLocaleTimeString('en-US', { 
+      return date.toLocaleTimeString('vi-VN', { 
         hour: 'numeric', 
         minute: '2-digit',
-        hour12: true 
+        hour12: false
       });
     } else if (days === 1) {
-      return 'Yesterday';
+      return 'Hôm qua';
     } else if (days < 7) {
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
+      return date.toLocaleDateString('vi-VN', { weekday: 'short' });
     } else {
-      return date.toLocaleDateString('en-US', { 
+      return date.toLocaleDateString('vi-VN', { 
         month: 'short', 
         day: 'numeric' 
       });
