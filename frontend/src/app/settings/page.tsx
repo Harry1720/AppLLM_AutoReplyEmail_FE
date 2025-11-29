@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import { fetchUserProfile, fetchEmails, deleteUserAccount, logout, getAuthToken } from '@/services/api';
 
@@ -17,8 +18,6 @@ export default function SettingsPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [editName, setEditName] = useState('');
-  const [isSaving, setSaving] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
 
   useEffect(() => {
@@ -38,7 +37,6 @@ export default function SettingsPage() {
       setIsLoading(true);
       const profile = await fetchUserProfile();
       setUserProfile(profile);
-      setEditName(profile.name || '');
     } catch (error: unknown) {
       console.error('Error loading user profile:', error);
       if (error instanceof Error && error.message.includes('Authentication')) {
@@ -55,11 +53,11 @@ export default function SettingsPage() {
       
       // Fetch emails để trigger sync với Gmail
       await fetchEmails(50); // Tải 50 emails mới nhất
-      
-      // Cập nhật thời gian sync
       setLastSyncTime(new Date());
       
+      // Hiển thị thông báo thành công
       alert('Đồng bộ email thành công!');
+      
     } catch (error: unknown) {
       console.error('Error syncing emails:', error);
       const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi đồng bộ';
@@ -171,13 +169,10 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-medium text-gray-900">
-                      Lần đồng bộ cuối
+                      Lần đồng bộ cuối: <span className="text-sm text-gray-500">{formatLastSyncTime()}</span>
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      {formatLastSyncTime()}
-                    </p>
                   </div>
-                  <button
+                  {/* <button
                     onClick={handleSyncEmails}
                     disabled={isSyncing}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -198,7 +193,7 @@ export default function SettingsPage() {
                         Đồng bộ ngay
                       </>
                     )}
-                  </button>
+                  </button> */}
                 </div>
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex">
@@ -207,7 +202,7 @@ export default function SettingsPage() {
                     </svg>
                     <div className="ml-3">
                       <p className="mt-1 text-sm text-blue-700">
-                        Nhấn nút "Đồng bộ ngay" để cập nhật email mới nhất.
+                        Dữ liệu sẽ được cập nhật khi bạn quay về trang làm việc.
                       </p>
                     </div>
                   </div>
@@ -239,15 +234,16 @@ export default function SettingsPage() {
                 </button>
               </div>
               <div className="text-center mt-4">
-                <button
-                  onClick={() => router.push('/workspace')}
+                {/* Thay button bằng Link */}
+                <Link
+                  href="/workspace"
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
                   Trở về trang làm việc
-                </button>
+                </Link>
               </div>
             </div>
           </div>

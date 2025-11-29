@@ -15,7 +15,7 @@ export default function LandingPage() {
           response_type: 'code',
           scope: 'email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
           access_type: 'offline',
-          prompt: 'consent'
+          prompt: 'select_account'
         }).toString();
     
     // Redirect to Google OAuth

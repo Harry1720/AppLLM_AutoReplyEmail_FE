@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchUserProfile, fetchEmails, logout, getAuthToken } from '@/services/api';
+import { fetchUserProfile, logout, getAuthToken } from '@/services/api';
 
 interface HeaderProps {
-  onSync?: () => void;
+  onSync?: () => Promise<void>;
+  isSyncing?: boolean;
 }
 
-export default function Header({ onSync }: HeaderProps = {}) {
+export default function Header({ onSync, isSyncing = false }: HeaderProps) {
   const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [userProfile, setUserProfile] = useState<{
@@ -18,7 +19,6 @@ export default function Header({ onSync }: HeaderProps = {}) {
     picture?: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
@@ -54,16 +54,8 @@ export default function Header({ onSync }: HeaderProps = {}) {
   };
 
   const handleSync = async () => {
-    try {
-      setIsSyncing(true);
-      await fetchEmails(50);
-      if (onSync) {
-        onSync();
-      }
-    } catch (error) {
-      console.error('Error syncing:', error);
-    } finally {
-      setIsSyncing(false);
+    if (onSync && !isSyncing) {
+      await onSync();
     }
   };
 
@@ -95,21 +87,23 @@ export default function Header({ onSync }: HeaderProps = {}) {
         {/* Right side actions */}
         <div className="flex items-center space-x-4">
           {/* Sync button */}
-          <button 
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
-            title="Đồng bộ email"
-          >
-            <svg 
-              className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+          {onSync && (
+            <button 
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={isSyncing ? "Đang đồng bộ..." : "Đồng bộ email"}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
+              <svg 
+                className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          )}
 
           {/* User menu */}
           <div className="relative">

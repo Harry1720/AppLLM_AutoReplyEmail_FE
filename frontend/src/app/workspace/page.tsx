@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Email } from '@/types/email';
 import EmailList from '@/components/EmailList';
@@ -14,27 +14,16 @@ export default function WorkspacePage() {
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Check if user is authenticated
-    const token = getAuthToken();
-    const userInfo = getUserInfo();
-
-    if (!token || !userInfo) {
-      // Redirect to landing page if not authenticated
-      router.push('/');
-      return;
-    }
-
-    // Fetch emails from backend
-    loadEmails();
-  }, [router]);
-
-  const loadEmails = async (pageToken?: string) => {
+  // Sử dụng useCallback để tránh re-create function
+  const loadEmails = useCallback(async (pageToken?: string, showLoading = true) => {
     try {
-      setIsLoading(true);
+      if (showLoading) {
+        setIsLoading(true);
+      }
       setError(null);
       
       const data = await fetchEmails(20, pageToken);
@@ -83,6 +72,7 @@ export default function WorkspacePage() {
           // isRead: !email.labelIds?.includes('UNREAD'), // Gmail dùng label UNREAD để đánh dấu chưa đọc
         };
       });
+      
       setEmails(transformedEmails);
       setNextPageToken(data.next_page_token);
       
@@ -99,8 +89,31 @@ export default function WorkspacePage() {
       }
     } finally {
       setIsLoading(false);
+      setIsSyncing(false);
     }
-  };
+  }, [router]);
+
+  // Chỉ load lần đầu khi component mount
+  useEffect(() => {
+    const token = getAuthToken();
+    const userInfo = getUserInfo();
+
+    if (!token || !userInfo) {
+      router.push('/');
+      return;
+    }
+
+    // Load emails lần đầu
+    loadEmails(undefined, true);
+  }, [router, loadEmails]);
+
+  // Handler cho sync từ header - không reload toàn bộ trang
+  const handleSyncFromHeader = useCallback(async () => {
+    if (isSyncing) return; // Tránh sync nhiều lần
+    
+    setIsSyncing(true);
+    await loadEmails(undefined, false); // Sync mà không show loading spinner
+  }, [isSyncing, loadEmails]);
 
   const handleEmailSelect = async (email: Email) => {
     try {
@@ -199,7 +212,7 @@ export default function WorkspacePage() {
   if (isLoading) {
     return (
       <div className="h-screen flex flex-col bg-gray-50">
-        <Header />
+        <Header onSync={handleSyncFromHeader} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
@@ -214,7 +227,7 @@ export default function WorkspacePage() {
   if (error) {
     return (
       <div className="h-screen flex flex-col bg-gray-50">
-        <Header />
+        <Header onSync={handleSyncFromHeader} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -236,24 +249,30 @@ export default function WorkspacePage() {
     );
   }
 
-  const handleSyncFromHeader = () => {
-    loadEmails(); // Reload emails
-  };
-
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <Header onSync={handleSyncFromHeader}/>
+      <Header onSync={handleSyncFromHeader} isSyncing={isSyncing} />
       
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Email List */}
         <div className="w-90 bg-white border-r border-gray-200 flex flex-col">
           <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Hộp thư của bạn
-            </h2>
-            {/* <p className="text-sm text-gray-500">
-              {emails.filter((e: Email) => !e.isRead).length} thư chưa đọc
-            </p> */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Hộp thư của bạn
+                </h2>
+              </div>
+              {isSyncing && (
+                <div className="flex items-center text-sm text-blue-600">
+                  <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Đang đồng bộ...
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto">
             <EmailList 
