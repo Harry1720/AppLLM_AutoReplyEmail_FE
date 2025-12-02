@@ -7,7 +7,7 @@ import EmailList from '@/components/EmailList';
 import EmailContent from '@/components/EmailContent';
 import AiSuggestionPanel from '@/components/AiSuggestionPanel';
 import Header from '@/components/Header';
-import { fetchEmails, fetchEmailDetail, getAuthToken, getUserInfo, sendEmail } from '@/services/api';
+import { fetchEmails, fetchEmailDetail, getAuthToken, getUserInfo, generateAiReply, sendEmail } from '@/services/api';
 
 export default function WorkspacePage() {
   const router = useRouter();
@@ -17,12 +17,21 @@ export default function WorkspacePage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  // Checkbox states
+  const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
 
   // Sử dụng useCallback để tránh re-create function
-  const loadEmails = useCallback(async (pageToken?: string, showLoading = true) => {
+  const loadEmails = useCallback(async (pageToken?: string, showLoading = true, append = false) => {
     try {
       if (showLoading) {
-        setIsLoading(true);
+        if (append) {
+          setIsLoadingMore(true);
+        } else {
+          setIsLoading(true);
+        }
       }
       setError(null);
       
@@ -69,11 +78,16 @@ export default function WorkspacePage() {
           body: email.snippet || '',
           timestamp: email.date || new Date().toISOString(),
           hasAiSuggestion: false,
+          aiReplyGenerated: false,
           // isRead: !email.labelIds?.includes('UNREAD'), // Gmail dùng label UNREAD để đánh dấu chưa đọc
         };
       });
       
-      setEmails(transformedEmails);
+      if (append) {
+        setEmails((prev) => [...prev, ...transformedEmails]);
+      } else {
+        setEmails(transformedEmails);
+      }
       setNextPageToken(data.next_page_token);
       
     } catch (err: unknown) {
@@ -90,6 +104,7 @@ export default function WorkspacePage() {
     } finally {
       setIsLoading(false);
       setIsSyncing(false);
+      setIsLoadingMore(false);
     }
   }, [router]);
 
@@ -202,10 +217,101 @@ export default function WorkspacePage() {
     }
   };
 
-  const handleRegenerateAi = (emailId: string) => {
+  const handleRegenerateAi = async (emailId: string) => {
     console.log('Regenerating AI suggestion for:', emailId);
-    // TODO: Integrate with AI service
-    alert('Gợi ý AI đã được tạo lại!');
+    try {
+      setIsGeneratingAi(true);
+      const response = await generateAiReply(emailId);
+      
+      // Update email with draft info
+      setEmails((prev) => prev.map((e) => 
+        e.id === emailId 
+          ? { ...e, aiReplyGenerated: true, draftId: response.draft_id, hasAiSuggestion: true } 
+          : e
+      ));
+      
+      // Update selected email if it's the current one
+      if (selectedEmail?.id === emailId) {
+        setSelectedEmail((prev) => prev ? { 
+          ...prev, 
+          aiReplyGenerated: true, 
+          draftId: response.draft_id,
+          hasAiSuggestion: true 
+        } : null);
+      }
+      
+      alert('Gợi ý AI đã được tạo lại!');
+    } catch (err) {
+      console.error('Error regenerating AI:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tạo gợi ý AI';
+      alert(`Lỗi: ${errorMessage}`);
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
+  // Handle checkbox change
+  const handleEmailCheckboxChange = (emailId: string, checked: boolean) => {
+    setSelectedEmailIds((prev) => {
+      if (checked) {
+        // Limit to 5 emails
+        if (prev.length >= 5) {
+          alert('Bạn chỉ có thể chọn tối đa 5 email');
+          return prev;
+        }
+        return [...prev, emailId];
+      } else {
+        return prev.filter((id) => id !== emailId);
+      }
+    });
+  };
+
+  // Generate AI replies for selected emails
+  const handleGenerateAiReplies = async () => {
+    if (selectedEmailIds.length === 0) {
+      alert('Vui lòng chọn ít nhất 1 email');
+      return;
+    }
+
+    setIsGeneratingAi(true);
+    const results: { id: string; success: boolean; error?: string }[] = [];
+
+    for (const emailId of selectedEmailIds) {
+      try {
+        const response = await generateAiReply(emailId);
+        
+        // Update email with draft info
+        setEmails((prev) => prev.map((e) => 
+          e.id === emailId 
+            ? { ...e, aiReplyGenerated: true, draftId: response.draft_id } 
+            : e
+        ));
+        
+        results.push({ id: emailId, success: true });
+      } catch (err) {
+        console.error(`Error generating AI reply for ${emailId}:`, err);
+        results.push({ 
+          id: emailId, 
+          success: false, 
+          error: err instanceof Error ? err.message : 'Unknown error' 
+        });
+      }
+    }
+
+    setIsGeneratingAi(false);
+    setSelectedEmailIds([]); // Clear selection after generation
+
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.filter((r) => !r.success).length;
+    
+    alert(`Đã tạo xong!\nThành công: ${successCount}\nThất bại: ${failCount}`);
+  };
+
+  // Load more emails
+  const handleLoadMore = () => {
+    if (nextPageToken && !isLoadingMore) {
+      loadEmails(nextPageToken, true, true);
+    }
   };
 
   // Show loading state
@@ -262,6 +368,11 @@ export default function WorkspacePage() {
                 <h2 className="text-lg font-semibold text-gray-900">
                   Hộp thư của bạn
                 </h2>
+                {selectedEmailIds.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Đã chọn {selectedEmailIds.length}/5 email
+                  </p>
+                )}
               </div>
               {isSyncing && (
                 <div className="flex items-center text-sm text-blue-600">
@@ -274,32 +385,66 @@ export default function WorkspacePage() {
               )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            <EmailList 
-              emails={emails}
-              selectedEmail={selectedEmail}
-              onEmailSelect={handleEmailSelect}
-            />
-          </div>
+          <EmailList 
+            emails={emails}
+            selectedEmail={selectedEmail}
+            onEmailSelect={handleEmailSelect}
+            selectedEmailIds={selectedEmailIds}
+            onEmailCheckboxChange={handleEmailCheckboxChange}
+            hasNextPage={!!nextPageToken}
+            onLoadMore={handleLoadMore}
+            isLoadingMore={isLoadingMore}
+          />
         </div>
 
         {/* Middle Panel - Email Content */}
-        <div className="flex-1 w-2xl bg-white border-r border-gray-200">
-          {selectedEmail ? (
-            <EmailContent email={selectedEmail} />
-          ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Email của bạn</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Chọn một email từ danh sách để xem nội dung chi tiết
-                </p>
-              </div>
+        <div className="flex-1 w-2xl bg-white border-r border-gray-200 flex flex-col">
+          {/* Generate AI Button */}
+          {selectedEmailIds.length > 0 && (
+            <div className="border-b border-gray-200 p-4 bg-blue-50">
+              <button
+                onClick={handleGenerateAiReplies}
+                disabled={isGeneratingAi}
+                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {isGeneratingAi ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Đang tạo câu trả lời...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    <span>Tạo câu trả lời với AI ({selectedEmailIds.length})</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
+          
+          {/* Email Content */}
+          <div className="flex-1 overflow-y-auto">
+            {selectedEmail ? (
+              <EmailContent email={selectedEmail} />
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">Email của bạn</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Chọn một email từ danh sách để xem nội dung chi tiết
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Panel - AI Suggestions */}

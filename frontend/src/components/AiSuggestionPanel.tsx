@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Email } from '@/types/email';
+import { sendDraft, updateDraft, deleteEmail, getDraftDetail } from '@/services/api';
 
 interface AiSuggestionPanelProps {
   email: Email;
   onSendReply: (content: string) => Promise<void>;
-  onRegenerateAi: (emailId: string) => void;
+  onRegenerateAi: (emailId: string) => Promise<void>;
 }
 
 // Mock AI suggestions based on email content
@@ -60,35 +61,123 @@ Best regards`;
 };
 
 export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }: AiSuggestionPanelProps) {
-  const [aiSuggestion, setAiSuggestion] = useState(getAiSuggestion(email));
+  const [aiSuggestion, setAiSuggestion] = useState('');
+  const [originalDraftContent, setOriginalDraftContent] = useState(''); // Store original draft from Gmail
   const [isEditing, setIsEditing] = useState(false);
-  const [editedContent, setEditedContent] = useState(aiSuggestion);
+  const [editedContent, setEditedContent] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  const [isDraftDeleted, setIsDraftDeleted] = useState(false);
 
-  const handleRegenerate = () => {
-    // Simulate AI regeneration with slight variation
-    const baseSuggestion = getAiSuggestion(email);
-    const variations = [
-      baseSuggestion,
-      baseSuggestion.replace('Thank you for your email', 'I appreciate your message'),
-      baseSuggestion.replace('Best regards', 'Kind regards'),
-      baseSuggestion.replace('I would be happy to', 'I\'d be glad to'),
-    ];
-    const newSuggestion = variations[Math.floor(Math.random() * variations.length)];
-    setAiSuggestion(newSuggestion);
-    setEditedContent(newSuggestion);
-    onRegenerateAi(email.id);
+  // Load draft when email changes or has draftId
+  useEffect(() => {
+    const loadDraft = async () => {
+      if (email.draftId && !isDraftDeleted) {
+        setIsLoadingDraft(true);
+        try {
+          const draftResponse = await getDraftDetail(email.draftId);
+          const draftBody = draftResponse.data?.body || '';
+          setAiSuggestion(draftBody);
+          setOriginalDraftContent(draftBody);
+          setEditedContent(draftBody);
+        } catch (err) {
+          console.error('Error loading draft:', err);
+          // Fallback to mock suggestion
+          const mockSuggestion = getAiSuggestion(email);
+          setAiSuggestion(mockSuggestion);
+          setOriginalDraftContent(mockSuggestion);
+          setEditedContent(mockSuggestion);
+        } finally {
+          setIsLoadingDraft(false);
+        }
+      } else if (!email.draftId) {
+        // No draft yet, show mock suggestion
+        const mockSuggestion = getAiSuggestion(email);
+        setAiSuggestion(mockSuggestion);
+        setOriginalDraftContent(mockSuggestion);
+        setEditedContent(mockSuggestion);
+      }
+    };
+
+    loadDraft();
+    setIsDraftDeleted(false); // Reset deleted state when email changes
+  }, [email.id, email.draftId, isDraftDeleted]);
+
+  const handleRegenerate = async () => {
+    if (isDraftDeleted) {
+      alert('Bản nháp đã bị xóa. Vui lòng tạo lại.');
+      return;
+    }
+    await onRegenerateAi(email.id);
   };
 
   const handleSend = async () => {
+    if (isDraftDeleted) {
+      alert('Bản nháp đã bị xóa. Vui lòng tạo lại câu trả lời.');
+      return;
+    }
+
+    if (!email.draftId) {
+      alert('Không có draft ID. Vui lòng tạo câu trả lời AI trước.');
+      return;
+    }
+
     setIsSending(true);
     try {
-      await onSendReply(editedContent);
+      // Check if content was modified
+      const contentChanged = editedContent.trim() !== originalDraftContent.trim();
+      
+      if (contentChanged) {
+        // Update draft first
+        console.log('Content changed, updating draft...');
+        const replySubject = email.subject.startsWith('Re: ') 
+          ? email.subject 
+          : `Re: ${email.subject}`;
+        
+        await updateDraft(email.draftId, email.senderEmail, replySubject, editedContent);
+      }
+
+      // Send the draft
+      await sendDraft(email.draftId);
+      
+      alert('Email đã được gửi thành công!');
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to send email:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Không thể gửi email';
+      alert(`Lỗi: ${errorMessage}`);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleDeleteDraft = async () => {
+    if (!email.draftId) {
+      alert('Không có bản nháp để xóa.');
+      return;
+    }
+
+    const confirmed = confirm(
+      'Bạn có chắc chắn muốn xóa bản nháp này?\n\n⚠️ Lưu ý: Nếu xóa, bản nháp trên Gmail cũng sẽ bị mất!'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // Delete the draft email
+      await deleteEmail(email.draftId);
+      
+      // Clear the content and mark as deleted
+      setAiSuggestion('');
+      setEditedContent('');
+      setOriginalDraftContent('');
+      setIsDraftDeleted(true);
+      
+      alert('Bản nháp đã được xóa thành công!');
+    } catch (error) {
+      console.error('Failed to delete draft:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Không thể xóa bản nháp';
+      alert(`Lỗi: ${errorMessage}`);
     }
   };
 
@@ -122,115 +211,137 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
           </h2>
         </div>
         <p className="text-sm text-gray-500">
-          Gợi ý trả lời thông minh bởi AI
+          {isDraftDeleted 
+            ? 'Bản nháp đã bị xóa' 
+            : 'Gợi ý trả lời thông minh bởi AI'}
         </p>
       </div>
 
       {/* AI Suggestion Content */}
-      <div className="flex-1 p-4">
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-900">
-              Gợi ý trả lời
-            </h3>
+      <div className="flex-1 p-4 overflow-y-auto">{isLoadingDraft ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <svg className="animate-spin h-8 w-8 text-blue-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p className="text-sm text-gray-500">Đang tải bản nháp...</p>
+            </div>
           </div>
-          
-          <div className="relative">
-            <textarea
-              value={isEditing ? editedContent : aiSuggestion}
-              onChange={(e) => setEditedContent(e.target.value)}
-              readOnly={!isEditing}
-              className={`w-full h-64 p-3 border border-gray-200 rounded-lg resize-none text-sm ${
-                isEditing
-                  ? 'bg-white text-gray-900'
-                  : 'bg-gray-50 text-gray-700'
-              } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              placeholder="Gợi ý của AI sẽ hiển thị ở đây..."
-            />
-            {!isEditing && (
-              <button
-                onClick={handleEdit}
-                className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600"
-                title="Chỉnh sửa gợi ý"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
+        ) : isDraftDeleted ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <p className="text-sm text-gray-700 font-medium mb-2">Bản nháp đã bị xóa</p>
+              <p className="text-xs text-gray-500">Nhấn nút "Tạo lại gợi ý" để tạo bản nháp mới</p>
+            </div>
+          </div>
+        ) : (
+        <>
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-900">
+                Gợi ý trả lời
+              </h3>
+            </div>
+            
+            <div className="relative">
+              <textarea
+                value={isEditing ? editedContent : aiSuggestion}
+                onChange={(e) => setEditedContent(e.target.value)}
+                readOnly={!isEditing}
+                disabled={isDraftDeleted}
+                className={`w-full h-64 p-3 border border-gray-200 rounded-lg resize-none text-sm ${
+                  isEditing
+                    ? 'bg-white text-gray-900'
+                    : 'bg-gray-50 text-gray-700'
+                } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed`}
+                placeholder="Gợi ý của AI sẽ hiển thị ở đây..."
+              />
+              {!isEditing && !isDraftDeleted && aiSuggestion && (
+                <button
+                  onClick={handleEdit}
+                  className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600"
+                  title="Chỉnh sửa gợi ý"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            {isEditing ? (
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleSaveEdit}
+                  className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  Lưu thay đổi
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Hủy
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleSend}
+                  disabled={isSending || !editedContent.trim() || isDraftDeleted}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSending ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Đang gửi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                      <span>Gửi email</span>
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  onClick={handleRegenerate}
+                  disabled={isDraftDeleted}
+                  className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Tạo lại gợi ý</span>
+                </button>
+                
+                <button
+                  onClick={handleDeleteDraft}
+                  disabled={isSending || isDraftDeleted || !email.draftId}
+                  className="w-full border border-red-300 text-red-600 py-2 px-4 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>Xóa bản nháp</span>
+                </button>
+              </>
             )}
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          {isEditing ? (
-            <div className="flex space-x-2">
-              <button
-                onClick={handleSaveEdit}
-                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                Lưu thay đổi
-              </button>
-              <button
-                onClick={handleCancelEdit}
-                className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Hủy
-              </button>
-            </div>
-          ) : (
-            <>
-              <button
-                onClick={handleSend}
-                disabled={isSending || !editedContent.trim()}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSending ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Đang gửi...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                    <span>Gửi trả lời</span>
-                  </>
-                )}
-              </button>
-              
-              <button
-                onClick={handleRegenerate}
-                className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Tạo lại gợi ý</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  if (confirm('Bạn có chắc chắn muốn xóa bản nháp này?')) {
-                    setAiSuggestion('');
-                    setEditedContent('');
-                  }
-                }}
-                disabled={isSending}
-                className="w-full border border-red-300 text-red-600 py-2 px-4 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span>Xóa bản nháp</span>
-              </button>
-            </>
-          )}
-        </div>
+        </>
+        )}
       </div>
 
       {/* Footer */}

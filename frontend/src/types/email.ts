@@ -8,6 +8,8 @@ export interface Email {
   timestamp: string;
   hasAiSuggestion?: boolean;
   isRead?: boolean;
+  draftId?: string; // ID của draft được tạo bởi AI
+  aiReplyGenerated?: boolean; // Đã tạo câu trả lời AI chưa
 }
 
 export interface AiSuggestion {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { exchangeCodeForToken } from '@/services/api';
+import { exchangeCodeForToken, syncAiData } from '@/services/api';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -39,6 +39,11 @@ export default function AuthCallbackPage() {
         const data = await exchangeCodeForToken(code);
         
         console.log('Login successful:', data);
+        
+        // Start AI sync in background (don't wait for it)
+        syncAiData().catch((err) => {
+          console.error('AI sync failed (non-blocking):', err);
+        });
         
         // Redirect to workspace
         router.push('/workspace');

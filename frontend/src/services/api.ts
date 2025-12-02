@@ -342,3 +342,154 @@ export const logout = () => {
   removeAuthToken();
   removeUserInfo();
 };
+
+// Sync AI data (POST /ai/sync)
+export const syncAiData = async () => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/ai/sync`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to sync AI data');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error syncing AI data:', error);
+    throw error;
+  }
+};
+
+// Generate AI reply for an email (POST /ai/generate)
+export const generateAiReply = async (msgId: string) => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/ai/generate`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ msg_id: msgId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to generate AI reply');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error generating AI reply:', error);
+    throw error;
+  }
+};
+
+// Send existing draft (POST /drafts/{draft_id}/send)
+export const sendDraft = async (draftId: string) => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/drafts/${draftId}/send`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to send draft');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending draft:', error);
+    throw error;
+  }
+};
+
+// Update existing draft (PUT /drafts/{draft_id})
+export const updateDraft = async (draftId: string, to: string, subject: string, body: string) => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('to', to);
+    formData.append('subject', subject);
+    formData.append('body', body);
+
+    const response = await fetch(`${API_BASE_URL}/drafts/${draftId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update draft');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating draft:', error);
+    throw error;
+  }
+};
+
+// Get draft detail (GET /drafts/{draft_id})
+export const getDraftDetail = async (draftId: string) => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/drafts/${draftId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to get draft detail');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting draft detail:', error);
+    throw error;
+  }
+};
