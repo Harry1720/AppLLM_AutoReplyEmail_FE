@@ -402,6 +402,35 @@ export const generateAiReply = async (msgId: string) => {
   }
 };
 
+// Check sync status (GET /ai/sync-status)
+export const checkSyncStatus = async () => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/ai/sync-status`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to check sync status');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error checking sync status:', error);
+    throw error;
+  }
+};
+
 // Send existing draft (POST /drafts/{draft_id}/send)
 export const sendDraft = async (draftId: string) => {
   const token = getAuthToken();

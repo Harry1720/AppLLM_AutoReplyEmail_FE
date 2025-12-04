@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { exchangeCodeForToken, syncAiData } from '@/services/api';
+import { exchangeCodeForToken, syncAiData, checkSyncStatus } from '@/services/api';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
+  const [syncMessage, setSyncMessage] = useState<string>('Đang xác thực...');
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -36,14 +37,46 @@ export default function AuthCallbackPage() {
 
       try {
         // Exchange code for token
+        setSyncMessage('Đang xác thực...');
         const data = await exchangeCodeForToken(code);
         
         console.log('Login successful:', data);
         
-        // Start AI sync in background (don't wait for it)
-        syncAiData().catch((err) => {
-          console.error('AI sync failed (non-blocking):', err);
-        });
+        // Check if sync is needed
+        setSyncMessage('Kiểm tra ngữ cảnh...');
+        const syncStatus = await checkSyncStatus();
+        
+        if (!syncStatus.synced) {
+          // Start AI sync and wait for it
+          setSyncMessage('Đang xử lý lấy ngữ cảnh từ email đã gửi...');
+          await syncAiData();
+          
+          // Poll sync status until complete (max 60 seconds)
+          const maxAttempts = 30; // 30 attempts × 2 seconds = 60 seconds
+          let attempts = 0;
+          
+          while (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+            
+            const status = await checkSyncStatus();
+            if (status.synced) {
+              setSyncMessage(`✅ Đã lấy ngữ cảnh từ ${status.document_count} email`);
+              break;
+            }
+            
+            attempts++;
+            setSyncMessage(`Đang xử lý lấy ngữ cảnh... (${attempts}/${maxAttempts})`);
+          }
+          
+          if (attempts >= maxAttempts) {
+            setSyncMessage('⚠️ Quá thời gian chờ. Ngữ cảnh sẽ được xử lý trong nền.');
+          }
+        } else {
+          setSyncMessage(`✅ Đã có sẵn ngữ cảnh từ ${syncStatus.document_count} email`);
+        }
+        
+        // Wait a moment before redirect
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Redirect to workspace
         router.push('/workspace');
@@ -68,11 +101,21 @@ export default function AuthCallbackPage() {
           <>
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Đang xác thực...
+              {syncMessage.includes('✅') ? 'Hoàn tất!' : 'Đang xử lý...'}
             </h2>
             <p className="text-gray-600">
-              Vui lòng đợi trong giây lát
+              {syncMessage}
             </p>
+            {syncMessage.includes('Đang xử lý lấy ngữ cảnh') && (
+              <div className="mt-4">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Hệ thống đang phân tích email đã gửi để cải thiện chất lượng gợi ý AI
+                </p>
+              </div>
+            )}
           </>
         ) : error ? (
           <>
