@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Email } from '@/types/email';
-import { sendDraft, updateDraft, deleteEmail, getDraftDetail } from '@/services/api';
+import { sendDraft, updateDraft, deleteDraft, getDraftDetail } from '@/services/api';
 
 interface AiSuggestionPanelProps {
   email: Email;
@@ -158,14 +158,14 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
     }
 
     const confirmed = confirm(
-      'Bạn có chắc chắn muốn xóa bản nháp này?\n\n⚠️ Lưu ý: Nếu xóa, bản nháp trên Gmail cũng sẽ bị mất!'
+      'Bạn có chắc chắn muốn xóa bản nháp này?\n\n⚠️ Lưu ý: Nếu xóa, bản nháp trên Gmail và Supabase đều sẽ bị xóa!'
     );
 
     if (!confirmed) return;
 
     try {
-      // Delete the draft email
-      await deleteEmail(email.draftId);
+      // Delete draft using dedicated endpoint (deletes from both Gmail and Supabase)
+      const result = await deleteDraft(email.draftId);
       
       // Clear the content and mark as deleted
       setAiSuggestion('');
@@ -173,7 +173,12 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
       setOriginalDraftContent('');
       setIsDraftDeleted(true);
       
-      alert('Bản nháp đã được xóa thành công!');
+      // Show detailed message
+      if (result.supabase_deleted) {
+        alert('Bản nháp đã được xóa thành công từ cả Gmail và Supabase!');
+      } else {
+        alert('Bản nháp đã được xóa từ Gmail (không tìm thấy trong Supabase).');
+      }
     } catch (error) {
       console.error('Failed to delete draft:', error);
       const errorMessage = error instanceof Error ? error.message : 'Không thể xóa bản nháp';

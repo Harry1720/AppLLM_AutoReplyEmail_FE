@@ -493,3 +493,32 @@ export const getDraftDetail = async (draftId: string) => {
     throw error;
   }
 };
+
+// Delete draft (DELETE /drafts/{draft_id})
+export const deleteDraft = async (draftId: string) => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/drafts/${draftId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to delete draft');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting draft:', error);
+    throw error;
+  }
+};
