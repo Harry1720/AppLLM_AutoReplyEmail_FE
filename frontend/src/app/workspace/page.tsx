@@ -230,14 +230,14 @@ export default function WorkspacePage() {
           : e
       ));
       
-      // Update selected email if it's the current one
+      // Update selected email if it's the current one - force new object to trigger re-render
       if (selectedEmail?.id === emailId) {
-        setSelectedEmail((prev) => prev ? { 
-          ...prev, 
+        setSelectedEmail({ 
+          ...selectedEmail, 
           aiReplyGenerated: true, 
           draftId: response.draft_id,
           hasAiSuggestion: true 
-        } : null);
+        });
       }
       
       alert('Gợi ý AI đã được tạo lại!');
@@ -283,9 +283,19 @@ export default function WorkspacePage() {
         // Update email with draft info
         setEmails((prev) => prev.map((e) => 
           e.id === emailId 
-            ? { ...e, aiReplyGenerated: true, draftId: response.draft_id } 
+            ? { ...e, aiReplyGenerated: true, draftId: response.draft_id, hasAiSuggestion: true } 
             : e
         ));
+        
+        // Update selected email if it's the current one
+        if (selectedEmail?.id === emailId) {
+          setSelectedEmail({ 
+            ...selectedEmail, 
+            aiReplyGenerated: true, 
+            draftId: response.draft_id,
+            hasAiSuggestion: true 
+          });
+        }
         
         results.push({ id: emailId, success: true });
       } catch (err) {
