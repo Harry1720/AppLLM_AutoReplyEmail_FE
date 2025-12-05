@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Email } from '@/types/email';
 import { sendDraft, updateDraft, deleteDraft, getDraftDetail } from '@/services/api';
 
@@ -68,6 +68,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
   const [isSending, setIsSending] = useState(false);
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
   const [isDraftDeleted, setIsDraftDeleted] = useState(false);
+  const editableRef = useRef<HTMLDivElement>(null);
 
   // Load draft when email changes or has draftId
   useEffect(() => {
@@ -212,6 +213,12 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
   const handleEdit = () => {
     setIsEditing(true);
     setEditedContent(aiSuggestion);
+    // Set innerHTML after state update
+    setTimeout(() => {
+      if (editableRef.current) {
+        editableRef.current.innerHTML = aiSuggestion;
+      }
+    }, 0);
   };
 
   const handleCancelEdit = () => {
@@ -297,10 +304,10 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
               {isEditing ? (
                 <div className="relative">
                   <div 
+                    ref={editableRef}
                     contentEditable
                     suppressContentEditableWarning
                     onInput={(e) => setEditedContent(e.currentTarget.innerHTML)}
-                    dangerouslySetInnerHTML={{ __html: editedContent }}
                     className="w-full min-h-64 max-h-96 p-3 border border-gray-200 rounded-lg overflow-y-auto bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent prose prose-sm max-w-none"
                     style={{ whiteSpace: 'pre-wrap' }}
                   />
