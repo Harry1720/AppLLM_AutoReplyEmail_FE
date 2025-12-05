@@ -72,16 +72,20 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
   // Load draft when email changes or has draftId
   useEffect(() => {
     const loadDraft = async () => {
+      console.log('🎯 AiSuggestionPanel: email.id=', email.id, 'draftId=', email.draftId, 'isDraftDeleted=', isDraftDeleted);
       if (email.draftId && !isDraftDeleted) {
+        console.log('🎯 Loading draft with ID:', email.draftId);
         setIsLoadingDraft(true);
         try {
           const draftResponse = await getDraftDetail(email.draftId);
+          console.log('🎯 Draft response:', draftResponse);
           const draftBody = draftResponse.data?.body || '';
+          console.log('🎯 Draft body:', draftBody);
           setAiSuggestion(draftBody);
           setOriginalDraftContent(draftBody);
           setEditedContent(draftBody);
         } catch (err) {
-          console.error('Error loading draft:', err);
+          console.error('❌ Error loading draft:', err);
           // If draft not found, clear the content
           setAiSuggestion('');
           setOriginalDraftContent('');
@@ -90,6 +94,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
           setIsLoadingDraft(false);
         }
       } else if (!email.draftId) {
+        console.log('🎯 No draftId, clearing content');
         // No draft yet, clear content
         setAiSuggestion('');
         setOriginalDraftContent('');
@@ -99,7 +104,8 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
 
     loadDraft();
     setIsDraftDeleted(false); // Reset deleted state when email changes
-  }, [email.id, email.draftId, isDraftDeleted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email.id, email.draftId]); // isDraftDeleted intentionally omitted to prevent infinite loop
 
   const handleRegenerate = async () => {
     // Delete old draft first if exists
@@ -275,7 +281,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
               <p className="text-sm text-gray-700 font-medium mb-2">Chưa có câu trả lời AI</p>
-              <p className="text-xs text-gray-500">Chọn email và nhấn "Tạo câu trả lời với AI" để bắt đầu</p>
+              <p className="text-xs text-gray-500">Chọn email và nhấn &ldquo;Tạo câu trả lời với AI&rdquo; để bắt đầu</p>
             </div>
           </div>
         ) : (

@@ -86,24 +86,34 @@ export default function WorkspacePage() {
       // Fetch drafts from Supabase to mark emails with existing drafts
       let emailsWithDrafts = transformedEmails;
       try {
+        console.log('📧 Fetching drafts from Supabase...');
         const draftsResponse = await getAllDrafts();
+        console.log('📧 Drafts response:', draftsResponse);
         const drafts = draftsResponse.drafts || [];
+        console.log('📧 Number of drafts found:', drafts.length);
         
         // Create map of email_id -> draft_id
         const draftMap = new Map();
         drafts.forEach((draft: { email_id: string; draft_id: string }) => {
+          console.log(`📧 Mapping email_id ${draft.email_id} -> draft_id ${draft.draft_id}`);
           draftMap.set(draft.email_id, draft.draft_id);
         });
         
         // Mark emails that have drafts
-        emailsWithDrafts = transformedEmails.map(email => ({
-          ...email,
-          aiReplyGenerated: draftMap.has(email.id),
-          draftId: draftMap.get(email.id) || undefined,
-          hasAiSuggestion: draftMap.has(email.id)
-        }));
+        emailsWithDrafts = transformedEmails.map(email => {
+          const hasDraft = draftMap.has(email.id);
+          const draftId = draftMap.get(email.id);
+          console.log(`📧 Email ${email.id}: hasDraft=${hasDraft}, draftId=${draftId}`);
+          return {
+            ...email,
+            aiReplyGenerated: hasDraft,
+            draftId: draftId || undefined,
+            hasAiSuggestion: hasDraft
+          };
+        });
+        console.log('📧 Final emails with drafts:', emailsWithDrafts);
       } catch (draftErr) {
-        console.error('Error fetching drafts:', draftErr);
+        console.error('❌ Error fetching drafts:', draftErr);
         // Continue without draft info
       }
       
@@ -199,10 +209,14 @@ export default function WorkspacePage() {
         snippet: emailDetail.snippet || '',
         body: body,
         timestamp: emailDetail.date || email.timestamp,
-        hasAiSuggestion: false,
-        isRead: true
+        hasAiSuggestion: email.hasAiSuggestion || false,
+        isRead: true,
+        draftId: email.draftId, // Preserve draft info from original email
+        aiReplyGenerated: email.aiReplyGenerated || false,
+        replySent: email.replySent || false
       };
       
+      console.log('📧 Selected email with draft info:', fullEmail);
       setSelectedEmail(fullEmail);
       
       setEmails((prev: Email[]) => prev.map((e: Email) => 
