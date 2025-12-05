@@ -7,7 +7,7 @@ import EmailList from '@/components/EmailList';
 import EmailContent from '@/components/EmailContent';
 import AiSuggestionPanel from '@/components/AiSuggestionPanel';
 import Header from '@/components/Header';
-import { fetchEmails, fetchEmailDetail, getAuthToken, getUserInfo, generateAiReply, sendEmail } from '@/services/api';
+import { fetchEmails, fetchEmailDetail, getAuthToken, getUserInfo, generateAiReply, sendEmail, getAllDrafts } from '@/services/api';
 
 export default function WorkspacePage() {
   const router = useRouter();
@@ -83,10 +83,34 @@ export default function WorkspacePage() {
         };
       });
       
+      // Fetch drafts from Supabase to mark emails with existing drafts
+      let emailsWithDrafts = transformedEmails;
+      try {
+        const draftsResponse = await getAllDrafts();
+        const drafts = draftsResponse.drafts || [];
+        
+        // Create map of email_id -> draft_id
+        const draftMap = new Map();
+        drafts.forEach((draft: { email_id: string; draft_id: string }) => {
+          draftMap.set(draft.email_id, draft.draft_id);
+        });
+        
+        // Mark emails that have drafts
+        emailsWithDrafts = transformedEmails.map(email => ({
+          ...email,
+          aiReplyGenerated: draftMap.has(email.id),
+          draftId: draftMap.get(email.id) || undefined,
+          hasAiSuggestion: draftMap.has(email.id)
+        }));
+      } catch (draftErr) {
+        console.error('Error fetching drafts:', draftErr);
+        // Continue without draft info
+      }
+      
       if (append) {
-        setEmails((prev) => [...prev, ...transformedEmails]);
+        setEmails((prev) => [...prev, ...emailsWithDrafts]);
       } else {
-        setEmails(transformedEmails);
+        setEmails(emailsWithDrafts);
       }
       setNextPageToken(data.next_page_token);
       
@@ -202,18 +226,25 @@ export default function WorkspacePage() {
         ? selectedEmail.subject 
         : `Re: ${selectedEmail.subject}`;
       
-      // Send email using API
-      await sendEmail(
-        selectedEmail.senderEmail,
-        replySubject,
-        content
-      );
+      // Send email using API (already sent by AiSuggestionPanel, this is just callback)
+      // await sendEmail(selectedEmail.senderEmail, replySubject, content);
       
-      alert('Email đã được gửi thành công!');
+      // Mark email as reply sent
+      setEmails((prev) => prev.map((e) => 
+        e.id === selectedEmail.id 
+          ? { ...e, replySent: true } 
+          : e
+      ));
+      
+      // Update selected email
+      setSelectedEmail({ 
+        ...selectedEmail, 
+        replySent: true 
+      });
+      
+      // alert('Email đã được gửi thành công!'); // Already shown in AiSuggestionPanel
     } catch (err) {
-      console.error('Error sending reply:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Không thể gửi email. Vui lòng thử lại.';
-      alert(`Lỗi gửi email: ${errorMessage}`);
+      console.error('Error updating reply status:', err);
     }
   };
 

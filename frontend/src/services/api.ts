@@ -551,3 +551,32 @@ export const deleteDraft = async (draftId: string) => {
     throw error;
   }
 };
+
+// Get all drafts for current user (to check which emails have drafts)
+export const getAllDrafts = async () => {
+  const token = getAuthToken();
+  
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/drafts`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch drafts');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching drafts:', error);
+    throw error;
+  }
+};

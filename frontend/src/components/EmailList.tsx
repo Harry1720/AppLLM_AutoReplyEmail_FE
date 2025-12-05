@@ -74,7 +74,8 @@ export default function EmailList({
                   checked={selectedEmailIds.includes(email.id)}
                   onChange={(e) => handleCheckboxChange(e, email.id)}
                   onClick={(e) => e.stopPropagation()}
-                  className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                  disabled={email.aiReplyGenerated || email.replySent}
+                  className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               )}
               
@@ -92,7 +93,12 @@ export default function EmailList({
                     }`}>
                       {email.sender}
                     </span>
-                    {email.aiReplyGenerated && (
+                    {email.replySent && (
+                      <span className="text-blue-600 text-xs font-medium" title="Đã gửi trả lời">
+                        Đã gửi trả lời
+                      </span>
+                    )}
+                    {!email.replySent && email.aiReplyGenerated && (
                       <span className="text-green-500 text-sm" title="AI reply generated">
                         ✓
                       </span>
@@ -123,30 +129,30 @@ export default function EmailList({
             </div>
           </div>
         ))}
+        
+        {/* Load More Button - Inside scrollable area */}
+        {hasNextPage && (
+          <div className="p-3">
+            <button
+              onClick={onLoadMore}
+              disabled={isLoadingMore}
+              className="w-full py-2 px-4 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoadingMore ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Đang tải...
+                </span>
+              ) : (
+                'Tải thêm email'
+              )}
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Load More Button */}
-      {hasNextPage && (
-        <div className="border-t border-gray-200 p-3">
-          <button
-            onClick={onLoadMore}
-            disabled={isLoadingMore}
-            className="w-full py-2 px-4 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoadingMore ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Đang tải...
-              </span>
-            ) : (
-              'Tải thêm email'
-            )}
-          </button>
-        </div>
-      )}
     </div>
   );
 }

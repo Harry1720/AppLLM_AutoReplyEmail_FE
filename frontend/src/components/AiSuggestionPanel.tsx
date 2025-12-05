@@ -154,6 +154,9 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
       // Send the draft
       await sendDraft(email.draftId);
       
+      // Call parent callback to update email state
+      await onSendReply(editedContent);
+      
       alert('Email đã được gửi thành công!');
       setIsEditing(false);
     } catch (error) {
@@ -230,14 +233,31 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
           </h2>
         </div>
         <p className="text-sm text-gray-500">
-          {isDraftDeleted 
+          {email.replySent
+            ? 'Đã gửi trả lời'
+            : isDraftDeleted 
             ? 'Bản nháp đã bị xóa' 
             : 'Gợi ý trả lời thông minh bởi AI'}
         </p>
       </div>
 
       {/* AI Suggestion Content */}
-      <div className="flex-1 p-4 overflow-y-auto">{isLoadingDraft ? (
+      <div className="flex-1 p-4 overflow-y-auto">{email.replySent ? (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <h3 className="font-semibold text-green-900">Nội dung đã trả lời</h3>
+              </div>
+              <div 
+                className="prose prose-sm max-w-none text-gray-700"
+                dangerouslySetInnerHTML={{ __html: aiSuggestion }}
+              />
+            </div>
+          </div>
+        ) : isLoadingDraft ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <svg className="animate-spin h-8 w-8 text-blue-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
@@ -268,28 +288,31 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
             </div>
             
             <div className="relative">
-              <textarea
-                value={isEditing ? editedContent : aiSuggestion}
-                onChange={(e) => setEditedContent(e.target.value)}
-                readOnly={!isEditing}
-                disabled={isDraftDeleted}
-                className={`w-full h-64 p-3 border border-gray-200 rounded-lg resize-none text-sm ${
-                  isEditing
-                    ? 'bg-white text-gray-900'
-                    : 'bg-gray-50 text-gray-700'
-                } focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed`}
-                placeholder="Gợi ý của AI sẽ hiển thị ở đây..."
-              />
-              {!isEditing && !isDraftDeleted && aiSuggestion && (
-                <button
-                  onClick={handleEdit}
-                  className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600"
-                  title="Chỉnh sửa gợi ý"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
+              {isEditing ? (
+                <textarea
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="w-full h-64 p-3 border border-gray-200 rounded-lg resize-none text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Gợi ý của AI sẽ hiển thị ở đây..."
+                />
+              ) : (
+                <div className="relative">
+                  <div 
+                    className="w-full min-h-64 max-h-96 p-3 border border-gray-200 rounded-lg overflow-y-auto bg-gray-50 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: aiSuggestion }}
+                  />
+                  {!isDraftDeleted && aiSuggestion && (
+                    <button
+                      onClick={handleEdit}
+                      className="absolute top-2 right-2 p-1 bg-white rounded shadow-sm text-gray-400 hover:text-gray-600"
+                      title="Chỉnh sửa gợi ý"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
