@@ -295,12 +295,16 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
             
             <div className="relative">
               {isEditing ? (
-                <textarea
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  className="w-full h-64 p-3 border border-gray-200 rounded-lg resize-none text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Gợi ý của AI sẽ hiển thị ở đây..."
-                />
+                <div className="relative">
+                  <div 
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => setEditedContent(e.currentTarget.innerHTML)}
+                    dangerouslySetInnerHTML={{ __html: editedContent }}
+                    className="w-full min-h-64 max-h-96 p-3 border border-gray-200 rounded-lg overflow-y-auto bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent prose prose-sm max-w-none"
+                    style={{ whiteSpace: 'pre-wrap' }}
+                  />
+                </div>
               ) : (
                 <div className="relative">
                   <div 
