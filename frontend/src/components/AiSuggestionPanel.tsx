@@ -11,54 +11,54 @@ interface AiSuggestionPanelProps {
 }
 
 // Mock AI suggestions based on email content
-const getAiSuggestion = (email: Email): string => {
-  if (email.subject.toLowerCase().includes('meeting')) {
-    return `Hi ${email.sender.split(' ')[0]},
+// const getAiSuggestion = (email: Email): string => {
+//   if (email.subject.toLowerCase().includes('meeting')) {
+//     return `Hi ${email.sender.split(' ')[0]},
 
-Thank you for reaching out. I'd be happy to meet with you tomorrow to discuss the project proposal.
+// Thank you for reaching out. I'd be happy to meet with you tomorrow to discuss the project proposal.
 
-I'm available between 2:30 PM and 3:30 PM. Would that work for you? If not, please let me know alternative times that suit your schedule.
+// I'm available between 2:30 PM and 3:30 PM. Would that work for you? If not, please let me know alternative times that suit your schedule.
 
-Looking forward to our discussion.
+// Looking forward to our discussion.
 
-Best regards`;
-  } else if (email.subject.toLowerCase().includes('update')) {
-    return `Hi ${email.sender.split(' ')[0]},
+// Best regards`;
+//   } else if (email.subject.toLowerCase().includes('update')) {
+//     return `Hi ${email.sender.split(' ')[0]},
 
-Thank you for your email. Here's the current project status update:
+// Thank you for your email. Here's the current project status update:
 
-1. Current progress: 75% completed
-2. No major blockers at this time
-3. Expected completion: End of next week
+// 1. Current progress: 75% completed
+// 2. No major blockers at this time
+// 3. Expected completion: End of next week
 
-I'll send you a more detailed report by end of day as requested.
+// I'll send you a more detailed report by end of day as requested.
 
-Best regards`;
-  } else if (email.subject.toLowerCase().includes('collaboration')) {
-    return `Hi ${email.sender.split(' ')[0]},
+// Best regards`;
+//   } else if (email.subject.toLowerCase().includes('collaboration')) {
+//     return `Hi ${email.sender.split(' ')[0]},
 
-Thank you for reaching out about the collaboration opportunity. This sounds very interesting and aligns well with our current initiatives.
+// Thank you for reaching out about the collaboration opportunity. This sounds very interesting and aligns well with our current initiatives.
 
-I would be happy to schedule a call next week to discuss this further. I'm available:
-- Tuesday, 2-4 PM
-- Wednesday, 10 AM-12 PM
-- Thursday, 3-5 PM
+// I would be happy to schedule a call next week to discuss this further. I'm available:
+// - Tuesday, 2-4 PM
+// - Wednesday, 10 AM-12 PM
+// - Thursday, 3-5 PM
 
-Please let me know what works best for you.
+// Please let me know what works best for you.
 
-Looking forward to our conversation.
+// Looking forward to our conversation.
 
-Best regards`;
-  }
+// Best regards`;
+//   }
   
-  return `Hi ${email.sender.split(' ')[0]},
+//   return `Hi ${email.sender.split(' ')[0]},
 
-Thank you for your email. I appreciate you reaching out.
+// Thank you for your email. I appreciate you reaching out.
 
-I'll review this carefully and get back to you shortly with a detailed response.
+// I'll review this carefully and get back to you shortly with a detailed response.
 
-Best regards`;
-};
+// Best regards`;
+// };
 
 export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }: AiSuggestionPanelProps) {
   const [aiSuggestion, setAiSuggestion] = useState('');
@@ -82,20 +82,18 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
           setEditedContent(draftBody);
         } catch (err) {
           console.error('Error loading draft:', err);
-          // Fallback to mock suggestion
-          const mockSuggestion = getAiSuggestion(email);
-          setAiSuggestion(mockSuggestion);
-          setOriginalDraftContent(mockSuggestion);
-          setEditedContent(mockSuggestion);
+          // If draft not found, clear the content
+          setAiSuggestion('');
+          setOriginalDraftContent('');
+          setEditedContent('');
         } finally {
           setIsLoadingDraft(false);
         }
       } else if (!email.draftId) {
-        // No draft yet, show mock suggestion
-        const mockSuggestion = getAiSuggestion(email);
-        setAiSuggestion(mockSuggestion);
-        setOriginalDraftContent(mockSuggestion);
-        setEditedContent(mockSuggestion);
+        // No draft yet, clear content
+        setAiSuggestion('');
+        setOriginalDraftContent('');
+        setEditedContent('');
       }
     };
 
@@ -104,11 +102,27 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
   }, [email.id, email.draftId, isDraftDeleted]);
 
   const handleRegenerate = async () => {
-    if (isDraftDeleted) {
-      alert('Bản nháp đã bị xóa. Vui lòng tạo lại.');
-      return;
+    // Delete old draft first if exists
+    if (email.draftId && !isDraftDeleted) {
+      try {
+        await deleteDraft(email.draftId);
+        console.log('Old draft deleted before regenerating');
+      } catch (err) {
+        console.error('Error deleting old draft:', err);
+      }
     }
-    await onRegenerateAi(email.id);
+    
+    // Show loading state during AI generation
+    setIsLoadingDraft(true);
+    setAiSuggestion('');
+    setEditedContent('');
+    setOriginalDraftContent('');
+    
+    try {
+      await onRegenerateAi(email.id);
+    } finally {
+      setIsLoadingDraft(false);
+    }
   };
 
   const handleSend = async () => {
@@ -158,7 +172,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
     }
 
     const confirmed = confirm(
-      'Bạn có chắc chắn muốn xóa bản nháp này?\n\n⚠️ Lưu ý: Nếu xóa, bản nháp trên Gmail và Supabase đều sẽ bị xóa!'
+      'Bạn có chắc chắn muốn xóa bản nháp này?\n\n⚠️ Lưu ý: Nếu xóa, bản nháp trên Gmail cũng sẽ bị mất!'
     );
 
     if (!confirmed) return;
@@ -230,17 +244,18 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <p className="text-sm text-gray-500">Đang tải bản nháp...</p>
+              <p className="text-sm text-gray-500 font-medium">{email.draftId ? 'Đang tải bản nháp...' : 'Đang tạo câu trả lời...'}</p>
+              <p className="text-xs text-gray-400 mt-1">Vui lòng đợi trong giây lát</p>
             </div>
           </div>
-        ) : isDraftDeleted ? (
+        ) : !aiSuggestion && !email.draftId ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
-              <p className="text-sm text-gray-700 font-medium mb-2">Bản nháp đã bị xóa</p>
-              <p className="text-xs text-gray-500">Nhấn nút "Tạo lại gợi ý" để tạo bản nháp mới</p>
+              <p className="text-sm text-gray-700 font-medium mb-2">Chưa có câu trả lời AI</p>
+              <p className="text-xs text-gray-500">Chọn email và nhấn "Tạo câu trả lời với AI" để bắt đầu</p>
             </div>
           </div>
         ) : (
