@@ -416,8 +416,8 @@ export default function WorkspacePage() {
       
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Email List */}
-        <div className="w-90 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
+        <div className="w-90 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -440,7 +440,8 @@ export default function WorkspacePage() {
               )}
             </div>
           </div>
-          <EmailList 
+          <div className="flex-1 overflow-hidden">
+            <EmailList 
             emails={emails}
             selectedEmail={selectedEmail}
             onEmailSelect={handleEmailSelect}
@@ -450,6 +451,7 @@ export default function WorkspacePage() {
             onLoadMore={handleLoadMore}
             isLoadingMore={isLoadingMore}
           />
+          </div>
         </div>
 
         {/* Middle Panel - Email Content */}
