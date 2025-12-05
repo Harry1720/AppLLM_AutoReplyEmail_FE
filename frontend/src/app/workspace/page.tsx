@@ -18,10 +18,25 @@ export default function WorkspacePage() {
   const [error, setError] = useState<string | null>(null);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [sentEmails, setSentEmails] = useState<Set<string>>(new Set());
   
   // Checkbox states
   const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.push('/');
+    } else {
+      // Load sent emails from localStorage
+      const savedSentEmails = localStorage.getItem('sentEmails');
+      if (savedSentEmails) {
+        setSentEmails(new Set(JSON.parse(savedSentEmails)));
+      }
+    }
+  }, [router]);
 
   // Sử dụng useCallback để tránh re-create function
   const loadEmails = useCallback(async (pageToken?: string, showLoading = true, append = false) => {
@@ -99,16 +114,18 @@ export default function WorkspacePage() {
           draftMap.set(draft.email_id, draft.draft_id);
         });
         
-        // Mark emails that have drafts
+        // Mark emails that have drafts or have been sent
         emailsWithDrafts = transformedEmails.map(email => {
           const hasDraft = draftMap.has(email.id);
           const draftId = draftMap.get(email.id);
-          console.log(`📧 Email ${email.id}: hasDraft=${hasDraft}, draftId=${draftId}`);
+          const isSent = sentEmails.has(email.id);
+          console.log(`📧 Email ${email.id}: hasDraft=${hasDraft}, draftId=${draftId}, isSent=${isSent}`);
           return {
             ...email,
-            aiReplyGenerated: hasDraft,
+            aiReplyGenerated: hasDraft && !isSent,
             draftId: draftId || undefined,
-            hasAiSuggestion: hasDraft
+            hasAiSuggestion: hasDraft && !isSent,
+            replySent: isSent
           };
         });
         console.log('📧 Final emails with drafts:', emailsWithDrafts);
@@ -256,6 +273,12 @@ export default function WorkspacePage() {
         replySent: true 
       });
       
+      // Save to localStorage
+      const newSentEmails = new Set(sentEmails);
+      newSentEmails.add(selectedEmail.id);
+      setSentEmails(newSentEmails);
+      localStorage.setItem('sentEmails', JSON.stringify(Array.from(newSentEmails)));
+      
       // alert('Email đã được gửi thành công!'); // Already shown in AiSuggestionPanel
     } catch (err) {
       console.error('Error updating reply status:', err);
@@ -297,13 +320,13 @@ export default function WorkspacePage() {
 
   // Handle checkbox change
   const handleEmailCheckboxChange = (emailId: string, checked: boolean) => {
+    if (checked && selectedEmailIds.length >= 5) {
+      alert('Bạn chỉ có thể chọn tối đa 5 email');
+      return;
+    }
+    
     setSelectedEmailIds((prev) => {
       if (checked) {
-        // Limit to 5 emails
-        if (prev.length >= 5) {
-          alert('Bạn chỉ có thể chọn tối đa 5 email');
-          return prev;
-        }
         return [...prev, emailId];
       } else {
         return prev.filter((id) => id !== emailId);

@@ -1,9 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getAuthToken } from '@/services/api';
 
 export default function LandingPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect to workspace if already logged in
+  useEffect(() => {
+    const token = getAuthToken();
+    if (token) {
+      router.push('/workspace');
+    }
+  }, [router]);
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
