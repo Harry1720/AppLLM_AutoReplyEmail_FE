@@ -2,27 +2,27 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// Store token in localStorage
+// Store token in sessionStorage
 export const setAuthToken = (token: string) => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('auth_token', token);
+    sessionStorage.setItem('auth_token', token);
   }
 };
 
 export const getAuthToken = (): string | null => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('auth_token');
+    return sessionStorage.getItem('auth_token');
   }
   return null;
 };
 
 export const removeAuthToken = () => {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
   }
 };
 
-// User interface for localStorage
+// User interface for sessionStorage
 interface UserInfo {
   id: string;
   email: string;
@@ -33,13 +33,13 @@ interface UserInfo {
 // Store user info
 export const setUserInfo = (user: UserInfo) => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('user_info', JSON.stringify(user));
+    sessionStorage.setItem('user_info', JSON.stringify(user));
   }
 };
 
 export const getUserInfo = () => {
   if (typeof window !== 'undefined') {
-    const userInfo = localStorage.getItem('user_info');
+    const userInfo = sessionStorage.getItem('user_info');
     return userInfo ? JSON.parse(userInfo) : null;
   }
   return null;
@@ -47,7 +47,7 @@ export const getUserInfo = () => {
 
 export const removeUserInfo = () => {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('user_info');
+    sessionStorage.removeItem('user_info');
   }
 };
 
