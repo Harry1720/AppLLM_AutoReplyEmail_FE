@@ -64,11 +64,6 @@ export default function EmailComposer({ onSend }: EmailComposerProps) {
       return;
     }
 
-    // if (!subject.trim()) {
-    //   setError('Vui lòng nhập tiêu đề email');
-    //   return;
-    // }
-
     if (!body.trim()) {
       setError('Vui lòng nhập nội dung email');
       showToast('Vui lòng nhập nội dung email', 'warning');
@@ -139,20 +134,6 @@ export default function EmailComposer({ onSend }: EmailComposerProps) {
       {/* Form */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto space-y-4">
-          {/* Success Message */}
-          {/* {success && (
-            <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-              Email đã được gửi thành công!
-            </div>
-          )} */}
-
-          {/* Error Message */}
-          {/* {error && (
-            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )} */}
-
           {/* To Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -172,7 +153,6 @@ export default function EmailComposer({ onSend }: EmailComposerProps) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tiêu đề 
-              {/* <span className="text-red-500">*</span> */}
             </label>
             <input
               type="text"

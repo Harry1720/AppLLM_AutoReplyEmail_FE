@@ -26,7 +26,7 @@ export default function EmailContent({ email }: EmailContentProps) {
 
   // Sanitize và render HTML content
   const getSanitizedHTML = (html: string) => {
-    // Cấu hình DOMPurify để cho phép các thẻ cần thiết
+    // Cấu hình DOMPurify cho phép các thẻ
     const config = {
       ALLOWED_TAGS: [
         'p', 'br', 'strong', 'b', 'i', 'em', 'u', 'a', 'img', 
@@ -70,7 +70,6 @@ export default function EmailContent({ email }: EmailContentProps) {
         link.setAttribute('rel', 'noopener noreferrer');
       });
 
-      // Xử lý images - responsive
       const images = emailBody.querySelectorAll('img');
       images.forEach(img => {
         img.style.maxWidth = '100%';
@@ -133,32 +132,6 @@ export default function EmailContent({ email }: EmailContentProps) {
           </div>
         )}
       </div>
-
-      {/* Action Buttons */}
-      {/* <div className="border-t border-gray-200 p-6">
-        <div className="flex space-x-3">
-          <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-            <span>Reply</span>
-          </button>
-          
-          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            <span>Forward</span>
-          </button>
-
-          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-            <span>Archive</span>
-          </button>
-        </div>
-      </div> */}
     </div>
   );
 }

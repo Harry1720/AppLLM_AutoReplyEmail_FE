@@ -10,18 +10,18 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const [isChecked, setIsChecked] = useState(false);
 
   useEffect(() => {
-    // Hàm getAuthToken đã sửa để lấy từ sessionStorage
+    // Hàm getAuthToken lấy từ sessionStorage
     const token = getAuthToken();
     
-    // Danh sách các trang ai cũng vào được (không cần login)
+    // Danh sách các trang không cần login
     const publicRoutes = ['/', '/auth/callback'];
 
-    // Nếu không có token VÀ đang cố vào trang nội bộ (không phải public)
+    // Nếu không có token & đang cố vào trang trong
     if (!token && !publicRoutes.includes(pathname)) {
-      router.push('/'); // Đá về trang login
+      router.push('/'); // về trang login
     }
     
-    // Nếu có token VÀ đang ở trang Login
+    // Nếu có token + đang ở trang Login
     else if (token && pathname === '/') {
       router.push('/workspace'); // Đá sang workspace
     }
@@ -30,9 +30,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     setIsChecked(true);
     
   }, [pathname, router]);
-
-  // (Tùy chọn) Có thể hiện Loading trong lúc đang check token để tránh nháy giao diện
-  // if (!isChecked) return <div>Loading...</div>;
 
   return <>{children}</>;
 }

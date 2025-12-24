@@ -103,11 +103,6 @@ export default function EmailList({
                         ✨
                       </span>
                     )}
-                    {/* {email.hasAiSuggestion && (
-                      <span className="text-yellow-500 text-sm" title="AI suggestion available">
-                        
-                      </span>
-                    )} */}
                   </div>
                   <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
                     {formatTime(email.timestamp)}

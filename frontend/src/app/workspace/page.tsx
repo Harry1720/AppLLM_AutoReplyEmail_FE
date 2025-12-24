@@ -96,30 +96,29 @@ export default function WorkspacePage() {
           timestamp: email.date || new Date().toISOString(),
           hasAiSuggestion: false,
           aiReplyGenerated: false,
-          // isRead: !email.labelIds?.includes('UNREAD'), // Gmail dùng label UNREAD để đánh dấu chưa đọc
         };
       });
       
       // Fetch drafts from Supabase to mark emails with existing drafts
       let emailsWithDrafts = transformedEmails;
       try {
-        console.log('📧 Fetching drafts from Supabase...');
+        console.log('Fetching drafts from Supabase...');
         const draftsResponse = await getAllDrafts();
-        console.log('📧 Drafts response:', draftsResponse);
+        console.log('Drafts response:', draftsResponse);
         const drafts = draftsResponse.drafts || [];
-        console.log('📧 Number of drafts found:', drafts.length);
+        console.log('Number of drafts found:', drafts.length);
         
         // Fetch sent email IDs from server
-        console.log('📧 Fetching sent emails from server...');
+        console.log('Fetching sent emails from server...');
         const sentResponse = await getSentEmails();
         const sentEmailIds = new Set(sentResponse.sent_email_ids || []);
-        console.log('📧 Number of sent emails:', sentEmailIds.size);
+        console.log('Number of sent emails:', sentEmailIds.size);
         setSentEmails(sentEmailIds);
         
         // Create map of email_id -> draft_id
         const draftMap = new Map();
         drafts.forEach((draft: { email_id: string; draft_id: string }) => {
-          console.log(`📧 Mapping email_id ${draft.email_id} -> draft_id ${draft.draft_id}`);
+          console.log(`Mapping email_id ${draft.email_id} -> draft_id ${draft.draft_id}`);
           draftMap.set(draft.email_id, draft.draft_id);
         });
         
@@ -128,7 +127,7 @@ export default function WorkspacePage() {
           const hasDraft = draftMap.has(email.id);
           const draftId = draftMap.get(email.id);
           const isSent = sentEmailIds.has(email.id);
-          console.log(`📧 Email ${email.id}: hasDraft=${hasDraft}, draftId=${draftId}, isSent=${isSent}`);
+          console.log(`Email ${email.id}: hasDraft=${hasDraft}, draftId=${draftId}, isSent=${isSent}`);
           return {
             ...email,
             aiReplyGenerated: hasDraft && !isSent,
@@ -137,10 +136,9 @@ export default function WorkspacePage() {
             replySent: isSent
           };
         });
-        console.log('📧 Final emails with drafts:', emailsWithDrafts);
+        console.log('Final emails with drafts:', emailsWithDrafts);
       } catch (draftErr) {
-        console.error('❌ Error fetching drafts:', draftErr);
-        // Continue without draft info
+        console.error('Error fetching drafts:', draftErr);
       }
       
       if (append) {
@@ -243,12 +241,12 @@ export default function WorkspacePage() {
         timestamp: emailDetail.date || email.timestamp,
         hasAiSuggestion: email.hasAiSuggestion || false,
         isRead: true,
-        draftId: email.draftId, // Preserve draft info from original email
+        draftId: email.draftId, // draft from original email
         aiReplyGenerated: email.aiReplyGenerated || false,
         replySent: email.replySent || false
       };
       
-      console.log('📧 Selected email with draft info:', fullEmail);
+      console.log('Selected email with draft info:', fullEmail);
       setSelectedEmail(fullEmail);
       
       setEmails((prev: Email[]) => prev.map((e: Email) => 
@@ -271,10 +269,7 @@ export default function WorkspacePage() {
       const replySubject = selectedEmail.subject.startsWith('Re: ') 
         ? selectedEmail.subject 
         : `Re: ${selectedEmail.subject}`;
-      
-      // Send email using API (already sent by AiSuggestionPanel, this is just callback)
-      // await sendEmail(selectedEmail.senderEmail, replySubject, content);
-      
+            
       // Mark email as sent (status will be saved to DB by backend)
       setEmails((prev) => prev.map((e) => 
         e.id === selectedEmail.id 
@@ -293,9 +288,6 @@ export default function WorkspacePage() {
       newSentEmails.add(selectedEmail.id);
       setSentEmails(newSentEmails);
       
-      // Note: Không cần localStorage nữa, status đã được lưu vào DB (email_drafts.status='sent')
-      
-      // alert('Email đã được gửi thành công!'); // Already shown in AiSuggestionPanel
     } catch (err) {
       console.error('Error updating reply status:', err);
     }

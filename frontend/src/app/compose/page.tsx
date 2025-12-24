@@ -42,7 +42,7 @@ export default function ComposePage() {
       // Fetch sent emails
       const data = await fetchSentEmails(10, pageToken);
       
-      console.log('📧 Sent emails data:', data);
+      console.log('Sent emails data:', data);
       
       // Transform backend email format to frontend format
       interface EmailFromAPI {
@@ -57,7 +57,7 @@ export default function ComposePage() {
       }
 
       const transformedEmails: Email[] = data.emails.map((email: EmailFromAPI) => {
-          console.log('📧 Processing email:', email.id, 'to:', email.to, 'from:', email.from);
+          console.log('Processing email:', email.id, 'to:', email.to, 'from:', email.from);
           
           // For SENT emails, we want to show the recipient (To), not sender (From)
           // Parse "To" header for sent emails  
@@ -104,8 +104,6 @@ export default function ComposePage() {
             snippet: email.snippet || '',
             body: email.snippet || '',
             timestamp: email.date || new Date().toISOString(),
-            // hasAiSuggestion: false,
-            // aiReplyGenerated: false,
           };
         });
       
@@ -117,7 +115,7 @@ export default function ComposePage() {
       
       // Backend có thể trả về nextPageToken hoặc next_page_token
       setNextPageToken(data.nextPageToken || data.next_page_token || null);
-      // console.log('📧 Next page token:', data.nextPageToken || data.next_page_token);
+      // console.log('Next page token:', data.nextPageToken || data.next_page_token);
     } catch (error: any) {
       console.error('Error loading sent emails:', error);
       setError(error.message || 'Failed to load sent emails');
@@ -148,9 +146,8 @@ export default function ComposePage() {
       
       const detail = await fetchEmailDetail(email.id);
       
-      console.log('📧 Email detail response:', detail);
+      console.log('Email detail response:', detail);
       
-      // Backend trả về {data: {...}}
       const emailData = detail.data || detail;
       
       setSelectedEmail({

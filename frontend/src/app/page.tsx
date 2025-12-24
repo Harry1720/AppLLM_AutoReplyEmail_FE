@@ -38,22 +38,6 @@ export default function LandingPage() {
     <div className="min-h-screen bg-gradient-to-br to-sky-100 flex items-center justify-center px-4">
       <div className="max-w-2xl w-full space-y-8 text-center">
         <div className="space-y-4">
-          {/* Logo */}
-          {/* <div className="mx-auto w-20 h-20 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center">
-            <svg
-              className="w-12 h-12 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
-          </div> */}
           <div className="mx-auto mb-0 flex items-center justify-center w-64 h-64">
             <Image
               src="/logo.png"

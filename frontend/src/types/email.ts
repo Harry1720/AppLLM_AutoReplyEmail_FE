@@ -10,8 +10,8 @@ export interface Email {
   isRead?: boolean;
   draftId?: string; // ID của draft được tạo bởi AI
   aiReplyGenerated?: boolean; // Đã tạo câu trả lời AI chưa
-  replySent?: boolean; // Đã gửi trả lời chưa
-  attachments?: EmailAttachment[]; // File đính kèm
+  replySent?: boolean;
+  attachments?: EmailAttachment[];
 }
 
 export interface EmailAttachment {

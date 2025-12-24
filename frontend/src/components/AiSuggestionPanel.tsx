@@ -12,61 +12,11 @@ interface AiSuggestionPanelProps {
   onRegenerateAi: (emailId: string) => Promise<void>;
 }
 
-// Mock AI suggestions based on email content
-// const getAiSuggestion = (email: Email): string => {
-//   if (email.subject.toLowerCase().includes('meeting')) {
-//     return `Hi ${email.sender.split(' ')[0]},
-
-// Thank you for reaching out. I'd be happy to meet with you tomorrow to discuss the project proposal.
-
-// I'm available between 2:30 PM and 3:30 PM. Would that work for you? If not, please let me know alternative times that suit your schedule.
-
-// Looking forward to our discussion.
-
-// Best regards`;
-//   } else if (email.subject.toLowerCase().includes('update')) {
-//     return `Hi ${email.sender.split(' ')[0]},
-
-// Thank you for your email. Here's the current project status update:
-
-// 1. Current progress: 75% completed
-// 2. No major blockers at this time
-// 3. Expected completion: End of next week
-
-// I'll send you a more detailed report by end of day as requested.
-
-// Best regards`;
-//   } else if (email.subject.toLowerCase().includes('collaboration')) {
-//     return `Hi ${email.sender.split(' ')[0]},
-
-// Thank you for reaching out about the collaboration opportunity. This sounds very interesting and aligns well with our current initiatives.
-
-// I would be happy to schedule a call next week to discuss this further. I'm available:
-// - Tuesday, 2-4 PM
-// - Wednesday, 10 AM-12 PM
-// - Thursday, 3-5 PM
-
-// Please let me know what works best for you.
-
-// Looking forward to our conversation.
-
-// Best regards`;
-//   }
-  
-//   return `Hi ${email.sender.split(' ')[0]},
-
-// Thank you for your email. I appreciate you reaching out.
-
-// I'll review this carefully and get back to you shortly with a detailed response.
-
-// Best regards`;
-// };
-
 export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }: AiSuggestionPanelProps) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [aiSuggestion, setAiSuggestion] = useState('');
-  const [originalDraftContent, setOriginalDraftContent] = useState(''); // Store original draft from Gmail
+  const [originalDraftContent, setOriginalDraftContent] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -77,20 +27,20 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
   // Load draft when email changes or has draftId
   useEffect(() => {
     const loadDraft = async () => {
-      console.log('🎯 AiSuggestionPanel: email.id=', email.id, 'draftId=', email.draftId, 'isDraftDeleted=', isDraftDeleted);
+      console.log('AiSuggestionPanel: email.id=', email.id, 'draftId=', email.draftId, 'isDraftDeleted=', isDraftDeleted);
       if (email.draftId && !isDraftDeleted) {
-        console.log('🎯 Loading draft with ID:', email.draftId);
+        console.log('Loading draft with ID:', email.draftId);
         setIsLoadingDraft(true);
         try {
           const draftResponse = await getDraftDetail(email.draftId);
-          console.log('🎯 Draft response:', draftResponse);
+          console.log('Draft response:', draftResponse);
           const draftBody = draftResponse.data?.body || '';
-          console.log('🎯 Draft body:', draftBody);
+          console.log('Draft body:', draftBody);
           setAiSuggestion(draftBody);
           setOriginalDraftContent(draftBody);
           setEditedContent(draftBody);
         } catch (err) {
-          console.error('❌ Error loading draft:', err);
+          console.error('Error loading draft:', err);
           // If draft not found, clear the content
           setAiSuggestion('');
           setOriginalDraftContent('');
@@ -99,8 +49,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
           setIsLoadingDraft(false);
         }
       } else if (!email.draftId) {
-        console.log('🎯 No draftId, clearing content');
-        // No draft yet, clear content
+        console.log('No draftId, clearing content');
         setAiSuggestion('');
         setOriginalDraftContent('');
         setEditedContent('');
@@ -110,7 +59,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
     loadDraft();
     setIsDraftDeleted(false); // Reset deleted state when email changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email.id, email.draftId]); // isDraftDeleted intentionally omitted to prevent infinite loop
+  }, [email.id, email.draftId]);
 
   const handleRegenerate = async () => {
     // Delete old draft first if exists
@@ -208,7 +157,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
       
       // Show detailed message
       if (result.supabase_deleted) {
-        showToast('Bản nháp đã được xóa thành công từ cả Gmail và Supabase!\nVui lòng tải lại trang để cập nhật sự thay đổi.', 'success');
+        showToast('Bản nháp đã được xóa thành công ở Gmail!\nVui lòng tải lại trang để cập nhật sự thay đổi.', 'success');
       } else {
         showToast('Bản nháp đã được xóa từ Gmail (không tìm thấy trong Supabase).', 'success');
       }

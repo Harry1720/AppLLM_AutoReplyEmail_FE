@@ -1,5 +1,3 @@
-// API service for backend communication
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Store token in sessionStorage
@@ -383,7 +381,7 @@ export const syncAiData = async () => {
   }
 };
 
-// Generate AI reply for an email (POST /ai/generate)
+// Generate AI reply (POST /ai/generate)
 export const generateAiReply = async (msgId: string) => {
   const token = getAuthToken();
   
@@ -577,7 +575,7 @@ export const deleteDraft = async (draftId: string) => {
   }
 };
 
-// Get all drafts for current user (to check which emails have drafts)
+// Get all drafts for current user (check which have drafts)
 export const getAllDrafts = async () => {
   const token = getAuthToken();
   
@@ -606,7 +604,7 @@ export const getAllDrafts = async () => {
   }
 };
 
-// Get list of sent email IDs from server
+// Get sent email from server
 export const getSentEmails = async () => {
   const token = getAuthToken();
   

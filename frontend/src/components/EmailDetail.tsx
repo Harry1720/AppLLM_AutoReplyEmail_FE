@@ -67,7 +67,7 @@ export default function EmailDetail({ email }: EmailDetailProps) {
                 // If body contains HTML tags, render as HTML
                 <div dangerouslySetInnerHTML={{ __html: email.body }} />
               ) : (
-                // Otherwise render as plain text with preserved line breaks
+                //render as plain text with line breaks
                 <div className="whitespace-pre-wrap">{email.body}</div>
               )}
             </div>
