@@ -96,6 +96,17 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
       return;
     }
 
+    // Hiển thị hộp thoại xác nhận trước khi gửi
+    const confirmed = await confirm({
+      title: 'Xác nhận gửi email',
+      message: 'Bạn có chắc chắn muốn gửi email trả lời này không?',
+      confirmText: 'Gửi',
+      cancelText: 'Hủy',
+      type: 'info'
+    });
+
+    if (!confirmed) return;
+
     setIsSending(true);
     try {
       // Kiểm tra xem nội dung có thay đổi không
@@ -207,7 +218,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
           {email.replySent
             ? 'Đã gửi trả lời'
             : isDraftDeleted 
-            ? 'Bản nháp đã bị xóa' 
+            ? 'Bản nháp đã bị xóa. Vui lòng tải lại trang để cập nhật.' 
             : 'Gợi ý trả lời thông minh bởi AI'}
         </p>
       </div>
