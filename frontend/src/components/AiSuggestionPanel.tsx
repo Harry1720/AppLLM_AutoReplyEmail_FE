@@ -62,6 +62,23 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
   }, [email.id, email.draftId]);
 
   const handleRegenerate = async () => {
+    // Show confirmation dialog
+    const confirmed = await confirm({
+      title: 'Tạo lại gợi ý',
+      message: 'Bạn có chắc chắn muốn tạo lại gợi ý từ AI?\nBản nháp hiện tại sẽ bị xóa và thay thế bằng gợi ý mới.',
+      confirmText: 'Tạo lại',
+      cancelText: 'Hủy',
+      type: 'warning'
+    });
+
+    if (!confirmed) return;
+
+    // Show loading state during AI generation
+    setIsLoadingDraft(true);
+    setAiSuggestion('');
+    setEditedContent('');
+    setOriginalDraftContent('');
+    
     // Delete old draft first if exists
     if (email.draftId && !isDraftDeleted) {
       try {
@@ -71,12 +88,6 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
         console.error('Error deleting old draft:', err);
       }
     }
-    
-    // Show loading state during AI generation
-    setIsLoadingDraft(true);
-    setAiSuggestion('');
-    setEditedContent('');
-    setOriginalDraftContent('');
     
     try {
       await onRegenerateAi(email.id);
@@ -156,6 +167,9 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
 
     if (!confirmed) return;
 
+    // Show loading state while deleting
+    setIsLoadingDraft(true);
+
     try {
       // Delete draft using dedicated endpoint (deletes from both Gmail and Supabase)
       const result = await deleteDraft(email.draftId);
@@ -176,6 +190,8 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi }
       console.error('Failed to delete draft:', error);
       const errorMessage = error instanceof Error ? error.message : 'Không thể xóa bản nháp';
       showToast(`Lỗi: ${errorMessage}`, 'error');
+    } finally {
+      setIsLoadingDraft(false);
     }
   };
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Dùng để đọc dữ liệu trên thanh địa chỉ (URL)
 import { exchangeCodeForToken, syncAiData, checkSyncStatus } from '@/services/api';
 
 export default function AuthCallbackPage() {
@@ -17,6 +17,7 @@ export default function AuthCallbackPage() {
       const code = searchParams.get('code');
       const errorParam = searchParams.get('error');
 
+      // Nếu Google báo lỗi hoặc không tìm thấy code -> Báo lỗi và chuyển về trang chủ sau 3s
       if (errorParam) {
         setError('Đăng nhập bị hủy hoặc thất bại');
         setIsProcessing(false);
@@ -38,49 +39,51 @@ export default function AuthCallbackPage() {
       try {
         // Exchange code for token
         setSyncMessage('Đang xác thực...');
-        const data = await exchangeCodeForToken(code);
+        const data = await exchangeCodeForToken(code); // Gọi API gửi code lên server, server sẽ trả về Token đăng nhập
         
         console.log('Login successful:', data);
         
         // Check if sync is needed
-        setSyncMessage('Kiểm tra ngữ cảnh...');
-        const syncStatus = await checkSyncStatus();
+        setSyncMessage('Kiểm tra ngữ cảnh...'); // Đổi thông báo
+        const syncStatus = await checkSyncStatus(); // Hỏi server xem user này đã đồng bộ dữ liệu AI chưa
         
-        if (!syncStatus.synced) {
+        if (!syncStatus.synced) { // Nếu server trả về là chưa đồng bộ
           // Start AI sync and wait for it
           setSyncMessage('Đang xử lý lấy ngữ cảnh từ email đã gửi...');
-          await syncAiData();
+          await syncAiData(); //gọi Server bắt đầu quá trình đọc email (Vector embedding)
           
           // Poll sync status until complete (max 60 seconds)
           const maxAttempts = 30; // 30 attempts × 2 seconds = 60 seconds
           let attempts = 0;
           
           while (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            //Sleep" => tạo ra 1 Promise sẽ hoàn thành sau 2s. await giúp code "ngủ" 2 giây trước khi chạy dòng tiếp theo.
             
-            const status = await checkSyncStatus();
-            if (status.synced) {
+            const status = await checkSyncStatus(); //Hỏi lại server đã lấy ngữ cảnh xong chưa
+            if (status.synced) { //Đã lấy xong
               setSyncMessage(`✅ Đã lấy ngữ cảnh`);
               break;
             }
             
-            attempts++;
+            attempts++; // Nếu chưa xong -> tăng biến đếm và lặp lại
             setSyncMessage(`Đang xử lý lấy ngữ cảnh...`);
           }
           
           if (attempts >= maxAttempts) {
-            setSyncMessage('⚠️ Quá thời gian chờ. Ngữ cảnh sẽ được xử lý trong nền.');
+            setSyncMessage('Quá thời gian chờ. Ngữ cảnh sẽ được xử lý trong nền.');
           }
         } else {
-          setSyncMessage(`✅ Đã có sẵn ngữ cảnh`);
+          setSyncMessage(`✅ Đã có ngữ cảnh`);
         }
         
         // Wait a moment before redirect
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1000)); //Chờ 1 giây để người dùng thấy UI "Đã lấy ngữ cảnh" trước khi chuyển trang.
         
         // Redirect to workspace
         router.push('/workspace');
-      } catch (err: unknown) {
+
+      } catch (err: unknown) { //Nếu bất kỳ lệnh await nào ở trên bị lỗi -> nhảy thẳng xuống đây
         console.error('Authentication error:', err);
         const errorMessage = err instanceof Error ? err.message : 'Đăng nhập thất bại. Vui lòng thử lại.';
         setError(errorMessage);
@@ -91,8 +94,8 @@ export default function AuthCallbackPage() {
       }
     };
 
-    handleCallback();
-  }, [searchParams, router]);
+    handleCallback();// Gọi hàm async vừa định nghĩa ở trên để nó bắt đầu chạy
+  }, [searchParams, router]);// useEffect sẽ chạy lại nếu searchParams hoặc router thay đổi (thực tế chỉ chạy 1 lần khi load trang)
 
   return (
     <div className="min-h-screen bg-gradient-to-br to-sky-100 flex items-center justify-center px-4">
@@ -101,7 +104,8 @@ export default function AuthCallbackPage() {
           <>
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              {syncMessage.includes('✅') ? 'Hoàn tất!' : 'Đang xử lý...'}
+              {syncMessage.includes('✅') ? 'Hoàn tất!' : 'Đang xử lý...'} 
+              {/* Nếu tiến trình đồng bộ thành công thì hiển thị Hoàn tất */}
             </h2>
             <p className="text-gray-600">
               {syncMessage}

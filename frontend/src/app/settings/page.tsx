@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+
+  // Định nghĩa kiểu dữ liệu cho User để TypeScript hiểu
   interface UserProfile {
     id: string;
     email: string;
@@ -19,10 +21,10 @@ export default function SettingsPage() {
     picture?: string;
   }
 
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false); //Nút đồng bộ thủ công cũ
   const [isLoading, setIsLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // Lưu thông tin user
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date()); // Thời gian đồng bộ cuối
 
   useEffect(() => {
     // Check authentication
@@ -51,6 +53,7 @@ export default function SettingsPage() {
     }
   };
 
+  //Đồng bộ email thủ công tại setting -> tạm không dùng
   const handleSyncEmails = async () => {
     try {
       setIsSyncing(true);
@@ -86,8 +89,8 @@ export default function SettingsPage() {
 
     try {
       await deleteUserAccount();
-      showToast('Tài khoản đã được ngắt kết nối với ứng dụng thành công.\nĐể truy cập lại hệ thống, vui lòng thực hiện thêm bước ngắt kết nối với ứng dụng Gmail Auto Reply (ứng dụng bên thứ ba) trong phần "Quản lý tài khoản Google của bạn"', 'success', 8000);
-      setTimeout(() => router.push('/'), 8000);
+      showToast('Tài khoản đã được ngắt kết nối với ứng dụng thành công.\nĐể truy cập lại hệ thống, vui lòng thực hiện thêm bước ngắt kết nối với ứng dụng Gmail Auto Reply (ứng dụng bên thứ ba) trong phần "Quản lý tài khoản Google của bạn"', 'success', 10000);
+      router.push('/');
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra';
       showToast('Lỗi: ' + errorMessage, 'error');
@@ -155,11 +158,13 @@ export default function SettingsPage() {
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
                       {userProfile.picture ? (
-                        <img src={userProfile.picture} alt={userProfile.name} className="w-full h-full rounded-full" />
+                        <img src={userProfile.picture} alt={userProfile.name} className="w-full h-full rounded-full" /> 
+                        // TH1: Nếu có ảnh từ Google -> Hiện ảnh
                       ) : (
                         <span className="text-white font-medium text-xl">
                           {userProfile.name?.charAt(0).toUpperCase() || 'U'}
                         </span>
+                        // TH2: Nếu không có ảnh -> Hiện chữ cái đầu của tên (Ví dụ: tên Bảo -> hiện chữ B)
                       )}
                     </div>
                     <div className="flex-1">

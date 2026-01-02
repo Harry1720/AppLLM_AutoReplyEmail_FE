@@ -7,24 +7,28 @@ import EmailList from '@/components/EmailList';
 import EmailContent from '@/components/EmailContent';
 import AiSuggestionPanel from '@/components/AiSuggestionPanel';
 import Header from '@/components/Header';
+
+// Import các hàm gọi API (Service)
 import { fetchEmails, fetchEmailDetail, getAuthToken, getUserInfo, generateAiReply, sendEmail, getAllDrafts, getSentEmails } from '@/services/api';
+
 import { useToast } from '@/components/ToastContainer';
 
 export default function WorkspacePage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [emails, setEmails] = useState<Email[]>([]);
-  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [emails, setEmails] = useState<Email[]>([]); // Lưu danh sách tất cả email đang hiển thị
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null); // Lưu email đang được click chọn xem
   const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false); // Trạng thái khi bấm nút "Đồng bộ"
   const [error, setError] = useState<string | null>(null);
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [sentEmails, setSentEmails] = useState<Set<string>>(new Set());
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null); // Token để tải trang tiếp theo (Pagination)
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // Trạng thái khi cuộn xuống để tải thêm
+  const [sentEmails, setSentEmails] = useState<Set<string>>(new Set()); // Lưu ID các email đã được trả lời (để hiện icon đã gửi)
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false); // Trạng thái khi tải chi tiết email
   
   // Checkbox states
-  const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]); // Danh sách ID các email được tích chọn checkbox
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false); // Trạng thái đang đợi AI viết
 
   // Check authentication on mount
   useEffect(() => {
@@ -34,9 +38,11 @@ export default function WorkspacePage() {
     }
   }, [router]);
 
+  // HÀM TẢI EMAIL
   // Sử dụng useCallback để tránh re-create function
   const loadEmails = useCallback(async (pageToken?: string, showLoading = true, append = false) => {
     try {
+      // Bật loading spinner tùy theo trường hợp (tải mới hay tải thêm)
       if (showLoading) {
         if (append) {
           setIsLoadingMore(true);
@@ -46,6 +52,7 @@ export default function WorkspacePage() {
       }
       setError(null);
       
+      // 1. GỌI API LẤY DANH SÁCH EMAIL TỪ GMAIL
       const data = await fetchEmails(20, pageToken);
       
       // Transform backend email format to frontend format
@@ -59,6 +66,9 @@ export default function WorkspacePage() {
         labelIds?: string[];
       }
 
+      // 2. XỬ LÝ DỮ LIỆU: Format lại thông tin người gửi
+      // API Gmail trả về chuỗi kiểu: "Nguyen Van A <nguyena@gmail.com>"
+      // Ta cần tách riêng Tên và Email.
       const transformedEmails: Email[] = data.emails.map((email: EmailFromAPI) => {
         // Parse "From" header: "Nguyen Van A <nguyen.a@gmail.com>" hoặc "\"Bảo Huỳnh\" <baohuynh4107@gmail.com>"
         const parseFrom = (fromHeader?: string) => {
@@ -86,6 +96,7 @@ export default function WorkspacePage() {
 
         const { name: senderName, email: senderEmail } = parseFrom(email.from);
 
+        // Trả về object Email chuẩn cho frontend dùng
         return {
           id: email.id,
           sender: senderName,
@@ -99,18 +110,18 @@ export default function WorkspacePage() {
         };
       });
       
-      // Fetch drafts from Supabase to mark emails with existing drafts
+      // 3. Fetch drafts from Supabase to mark emails with existing drafts
       let emailsWithDrafts = transformedEmails;
       try {
         console.log('Fetching drafts from Supabase...');
-        const draftsResponse = await getAllDrafts();
+        const draftsResponse = await getAllDrafts(); // Lấy danh sách bản nháp từ Supabase
         console.log('Drafts response:', draftsResponse);
         const drafts = draftsResponse.drafts || [];
         console.log('Number of drafts found:', drafts.length);
         
         // Fetch sent email IDs from server
         console.log('Fetching sent emails from server...');
-        const sentResponse = await getSentEmails();
+        const sentResponse = await getSentEmails(); // Lấy danh sách email đã gửi trả lời
         const sentEmailIds = new Set(sentResponse.sent_email_ids || []);
         console.log('Number of sent emails:', sentEmailIds.size);
         setSentEmails(sentEmailIds);
@@ -130,9 +141,9 @@ export default function WorkspacePage() {
           console.log(`Email ${email.id}: hasDraft=${hasDraft}, draftId=${draftId}, isSent=${isSent}`);
           return {
             ...email,
-            aiReplyGenerated: hasDraft && !isSent,
-            draftId: draftId || undefined,
-            hasAiSuggestion: hasDraft && !isSent,
+            aiReplyGenerated: hasDraft && !isSent, // Nếu có nháp và chưa gửi -> Đánh dấu là AI đã tạo
+            draftId: draftId || undefined, // Lưu lại ID bản nháp
+            hasAiSuggestion: hasDraft && !isSent, // Đánh dấu là đã gửi
             replySent: isSent
           };
         });
@@ -141,12 +152,13 @@ export default function WorkspacePage() {
         console.error('Error fetching drafts:', draftErr);
       }
       
+      // 4. CẬP NHẬT STATE
       if (append) {
-        setEmails((prev) => [...prev, ...emailsWithDrafts]);
+        setEmails((prev) => [...prev, ...emailsWithDrafts]); // Nối thêm vào danh sách cũ
       } else {
-        setEmails(emailsWithDrafts);
+        setEmails(emailsWithDrafts); // Thay thế hoàn toàn (làm mới)
       }
-      setNextPageToken(data.next_page_token);
+      setNextPageToken(data.next_page_token); // Lưu token trang sau
       
     } catch (err: unknown) {
       console.error('Error loading emails:', err);
@@ -166,7 +178,6 @@ export default function WorkspacePage() {
     }
   }, [router]);
 
-  // Chỉ load lần đầu khi component mount
   useEffect(() => {
     const token = getAuthToken();
     const userInfo = getUserInfo();
@@ -180,7 +191,7 @@ export default function WorkspacePage() {
     loadEmails(undefined, true);
   }, [router, loadEmails]);
 
-  // Handler cho sync từ header - không reload toàn bộ trang
+  // Handler cho sync từ header (đồng bộ thủ công) - không reload toàn bộ trang
   const handleSyncFromHeader = useCallback(async () => {
     if (isSyncing) return; // Tránh sync nhiều lần
     
@@ -188,15 +199,17 @@ export default function WorkspacePage() {
     await loadEmails(undefined, false); // Sync mà không show loading spinner
   }, [isSyncing, loadEmails]);
 
+  //Chọn xem chi tiết 1 Email
   const handleEmailSelect = async (email: Email) => {
+    setIsLoadingDetail(true); // Bật loading spinner
     try {
-      const detailResponse = await fetchEmailDetail(email.id);
+      const detailResponse = await fetchEmailDetail(email.id); // Khi click vào email, ta gọi API lấy chi tiết (fetchEmailDetail)
       const emailDetail = detailResponse.data;
 
       const parseFrom = (fromHeader?: string) => {
         if (!fromHeader) return { name: 'Unknown', email: '' };
         
-        // Check if fromHeader has <email> format
+        // Check if fromHeader has <email> format (tương tự như trên emailList)
         const emailMatch = fromHeader.match(/<(.+?)>/);
         
         if (emailMatch) {
@@ -249,6 +262,7 @@ export default function WorkspacePage() {
       console.log('Selected email with draft info:', fullEmail);
       setSelectedEmail(fullEmail);
       
+      // Đánh dấu email trong danh sách là "Đã đọc"
       setEmails((prev: Email[]) => prev.map((e: Email) => 
         e.id === email.id ? { ...e, isRead: true } : e
       ));
@@ -258,9 +272,12 @@ export default function WorkspacePage() {
       setEmails((prev: Email[]) => prev.map((e: Email) => 
         e.id === email.id ? { ...e, isRead: true } : e
       ));
+    } finally {
+      setIsLoadingDetail(false); // Tắt loading spinner
     }
   };
 
+  //Gửi trả lời
   const handleSendReply = async (content: string) => {
     if (!selectedEmail) return;
     
@@ -293,10 +310,11 @@ export default function WorkspacePage() {
     }
   };
 
+  //Tạo AI cho nhiều email
   const handleRegenerateAi = async (emailId: string) => {
     console.log('Regenerating AI suggestion for:', emailId);
     try {
-      setIsGeneratingAi(true);
+      setIsGeneratingAi(true); // Bật loading trên nút bấm
       const response = await generateAiReply(emailId);
       
       // Update email with draft info
@@ -349,14 +367,14 @@ export default function WorkspacePage() {
       return;
     }
 
-    setIsGeneratingAi(true);
+    setIsGeneratingAi(true); // Bật loading trên nút bấm
     const results: { id: string; success: boolean; error?: string }[] = [];
 
-    for (const emailId of selectedEmailIds) {
+    for (const emailId of selectedEmailIds) { // Duyệt qua từng ID email đã chọn
       try {
-        const response = await generateAiReply(emailId);
+        const response = await generateAiReply(emailId); // Gọi API sinh câu trả lời
         
-        // Update email with draft info
+        // Update email with draft info + update icon đã tạo thành công trên emailList
         setEmails((prev) => prev.map((e) => 
           e.id === emailId 
             ? { ...e, aiReplyGenerated: true, draftId: response.draft_id, hasAiSuggestion: true } 
@@ -385,12 +403,12 @@ export default function WorkspacePage() {
     }
 
     setIsGeneratingAi(false);
-    setSelectedEmailIds([]); // Clear selection after generation
+    setSelectedEmailIds([]); // Bỏ chọn checkbox sau khi làm xong
 
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
     
-    showToast(`Đã tạo xong!\nThành công: ${successCount}\nThất bại: ${failCount}`, 'info', 5000);
+    showToast(`Đã tạo xong!\nThành công: ${successCount}\nThất bại: ${failCount}`, 'info', 5000); // Hiện thông báo kết quả
   };
 
   // Load more emails
@@ -517,7 +535,17 @@ export default function WorkspacePage() {
           
           {/* Email Content */}
           <div className="flex-1 overflow-y-auto">
-            {selectedEmail ? (
+            {isLoadingDetail ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <svg className="animate-spin h-12 w-12 mx-auto text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="mt-4 text-sm text-gray-600">Đang tải nội dung email...</p>
+                </div>
+              </div>
+            ) : selectedEmail ? (
               <EmailContent email={selectedEmail} />
             ) : (
               <div className="h-full flex items-center justify-center text-gray-500">
@@ -527,7 +555,7 @@ export default function WorkspacePage() {
                   </svg>
                   <h3 className="mt-2 text-sm font-medium text-gray-900">Email của bạn</h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    Chọn một email từ danh sách để xem nội dung chi tiết. <br />Lưu ý khi nhấp chọn một email vui lòng đợi một lát để ứng dụng hiển thị.
+                    Chọn một email từ danh sách để xem nội dung chi tiết.
                   </p>
                 </div>
               </div>
@@ -537,7 +565,17 @@ export default function WorkspacePage() {
 
         {/* Right Panel - AI Suggestions */}
         <div className="flex-1 max-w-120 bg-white">
-          {selectedEmail ? (
+          {isLoadingDetail ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <svg className="animate-spin h-12 w-12 mx-auto text-purple-600" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="mt-4 text-sm text-gray-600">Đang tải trợ lý AI...</p>
+              </div>
+            </div>
+          ) : selectedEmail ? (
             <AiSuggestionPanel 
               email={selectedEmail}
               onSendReply={handleSendReply}

@@ -13,12 +13,18 @@ import { useToast } from '@/components/ToastContainer';
 export default function ComposePage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [emails, setEmails] = useState<Email[]>([]);
-  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [emails, setEmails] = useState<Email[]>([]); // Danh sách email đã gửi
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null); // Email đang được chọn để xem chi tiết
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination (Phân trang)
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Biến này quyết định cột bên phải hiện gì?
+  // true -> Hiện khung soạn thảo (EmailComposer)
+  // false -> Hiện nội dung email (EmailDetail) hoặc màn hình chờ
   const [showComposer, setShowComposer] = useState(false);
 
   // Check authentication on mount
@@ -39,15 +45,15 @@ export default function ComposePage() {
       }
       setError(null);
       
-      // Fetch sent emails
+      // 1. Gọi API lấy danh sách thư ĐÃ GỬI
       const data = await fetchSentEmails(10, pageToken);
       
       console.log('Sent emails data:', data);
       
       // Transform backend email format to frontend format
       interface EmailFromAPI {
-        id: string;
-        threadId?: string;
+        id: string; // Bắt buộc phải có, kiểu chuỗi ký tự
+        threadId?: string; // Dấu ? nghĩa là CÓ THỂ CÓ hoặc KHÔNG (Optional)
         subject?: string;
         snippet?: string;
         from?: string;
@@ -56,10 +62,10 @@ export default function ComposePage() {
         labelIds?: string[];
       }
 
+      // 2. Xử lý dữ liệu (Transform) -> thấy tên NGƯỜI NHẬN (To), chứ không phải tên mình (From).
       const transformedEmails: Email[] = data.emails.map((email: EmailFromAPI) => {
           console.log('Processing email:', email.id, 'to:', email.to, 'from:', email.from);
           
-          // For SENT emails, we want to show the recipient (To), not sender (From)
           // Parse "To" header for sent emails  
           const parseTo = (toHeader?: string) => {
             // Xử lý trường hợp null, undefined hoặc chuỗi rỗng ""
@@ -74,6 +80,7 @@ export default function ComposePage() {
             const firstRecipient = toHeader.split(',')[0].trim();
             
             // Check if has <email> format
+            // Logic Regex tương tự file Workspace: Tách Tên và Email
             const emailMatch = firstRecipient.match(/<(.+?)>/);
             
             if (emailMatch) {
@@ -94,6 +101,7 @@ export default function ComposePage() {
           };
 
           // For sent emails, use "to" field to show recipient
+          // Lấy thông tin người nhận
           const { name: recipientName, email: recipientEmail } = parseTo(email.to);
 
           return {
@@ -113,6 +121,7 @@ export default function ComposePage() {
         setEmails(transformedEmails);
       }
       
+      // Lưu token trang sau
       // Backend có thể trả về nextPageToken hoặc next_page_token
       setNextPageToken(data.nextPageToken || data.next_page_token || null);
       // console.log('Next page token:', data.nextPageToken || data.next_page_token);
@@ -131,25 +140,28 @@ export default function ComposePage() {
 
   useEffect(() => {
     // Load sent emails or show composer based on localStorage
+    // Kiểm tra trong LocalStorage có bản nháp chưa gửi không?
     const savedDraft = localStorage.getItem('email_draft');
     if (savedDraft) {
-      setShowComposer(true);
+      setShowComposer(true); // Nếu có -> Tự động bật chế độ soạn thảo
     }
-    loadSentEmails();
+    loadSentEmails(); // Tải danh sách email đã gửi
   }, [loadSentEmails]);
 
+  //Chọn xem email
   const handleEmailSelect = async (email: Email) => {
     try {
-      setShowComposer(false);
-      setSelectedEmail(null);
+      setShowComposer(false); // Tắt khung soạn thảo đi
+      setSelectedEmail(null); // Reset chọn email
       setError(null);
       
-      const detail = await fetchEmailDetail(email.id);
+      const detail = await fetchEmailDetail(email.id); // Gọi API lấy nội dung chi tiết
       
       console.log('Email detail response:', detail);
       
       const emailData = detail.data || detail;
       
+      // Cập nhật selectedEmail với body và attachments đầy đủ
       setSelectedEmail({
         ...email,
         body: emailData.body || emailData.snippet || '',
@@ -161,25 +173,29 @@ export default function ComposePage() {
     }
   };
 
+  //Bấm nút "Soạn thư mới"
   const handleNewEmail = () => {
-    setSelectedEmail(null);
-    setShowComposer(true);
+    setSelectedEmail(null); // Bỏ chọn email đang xem
+    setShowComposer(true); // Bật khung soạn thảo lên
   };
 
+  //Gửi email
   const handleSendEmail = async (to: string, subject: string, body: string, files?: File[]) => {
     try {
+
+      // 1. Gọi API gửi email
       await sendEmail(to, subject, body, files);
       
-      // Clear draft from localStorage
+      // 2. Clear draft from localStorage
       localStorage.removeItem('email_draft');
       
-      // Show success toast
+      // 3. Hiện thông báo thành công
       showToast('Email đã được gửi thành công!', 'success');
       
-      // Reload sent emails
+      // 4. Tự động tải lại danh sách để thấy email vừa gửi xuất hiện ngay lập tức 
       await loadSentEmails();
       
-      // Close composer
+      // 5. Đóng khung soạn thảo
       setShowComposer(false);
       
       return { success: true };
