@@ -1,6 +1,7 @@
 'use client';
 
 import { Email } from '@/types/email';
+import { useState } from 'react';
 
 interface EmailListProps {
   emails: Email[];
@@ -23,6 +24,7 @@ export default function EmailList({
   onLoadMore,
   isLoadingMore = false
 }: EmailListProps) {
+  const [hoveredEmailId, setHoveredEmailId] = useState<string | null>(null);
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -47,83 +49,119 @@ export default function EmailList({
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>, emailId: string) => {
-    e.stopPropagation(); // Prevent triggering email selection
+  const handleCheckboxChange = (e: React.MouseEvent, emailId: string) => {
+    e.stopPropagation();
     if (onEmailCheckboxChange) {
-      onEmailCheckboxChange(emailId, e.target.checked);
+      const isChecked = selectedEmailIds.includes(emailId);
+      onEmailCheckboxChange(emailId, !isChecked);
     }
+  };
+
+  const getInitials = (name: string) => {
+    return name.charAt(0).toUpperCase();
   };
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 divide-y divide-gray-200 overflow-y-auto">
-        {emails.map((email) => (
-          <div
-            key={email.id}
-            className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-              selectedEmail?.id === email.id 
-                ? 'bg-blue-50 border-r-2 border-blue-500' 
-                : ''
-            }`}
-          >
-            <div className="flex items-start space-x-3">
-              {/* Checkbox */}
-              {onEmailCheckboxChange && (
-                <input
-                  type="checkbox"
-                  checked={selectedEmailIds.includes(email.id)}
-                  onChange={(e) => handleCheckboxChange(e, email.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  disabled={email.aiReplyGenerated || email.replySent}
-                  className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-              )}
-              
-              {/* Email Content */}
-              <div 
-                className="flex-1 min-w-0"
-                onClick={() => onEmailSelect(email)}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center space-x-2 min-w-0 flex-1">
-                    <span className={`font-medium truncate ${
-                      email.isRead 
-                        ? 'text-gray-700' 
-                        : 'text-gray-900'
-                    }`}>
-                      {email.sender}
-                    </span>
-                    {email.replySent && (
-                      <span className="text-blue-600 text-xs font-medium" title="Đã gửi trả lời">
-                        Đã gửi trả lời
-                      </span>
-                    )}
-                    {!email.replySent && email.aiReplyGenerated && (
-                      <span className="text-yellow-500 text-sm" title="AI reply generated">
-                        ✨
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                    {formatTime(email.timestamp)}
-                  </span>
+        {emails.map((email) => {
+          const isChecked = selectedEmailIds.includes(email.id);
+          const isHovered = hoveredEmailId === email.id;
+          const isDisabled = email.aiReplyGenerated || email.replySent;
+          
+          return (
+            <div
+              key={email.id}
+              className={`py-2 px-4 cursor-pointer transition-colors ${
+                selectedEmail?.id === email.id 
+                  ? 'bg-blue-50 border-r-2 border-blue-500' 
+                  : isChecked
+                  ? 'bg-purple-50'
+                  : 'hover:bg-gray-50'
+              } ${
+                email.draftId && !email.replySent ? 'border-l-4 border-l-purple-400' : ''
+              }`}
+              onMouseEnter={() => setHoveredEmailId(email.id)}
+              onMouseLeave={() => setHoveredEmailId(null)}
+            >
+              <div className="flex items-start space-x-2">
+                {/* Avatar / Checkbox */}
+                <div
+                  onClick={(e) => onEmailCheckboxChange && !isDisabled ? handleCheckboxChange(e, email.id) : undefined}
+                  className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-medium transition-all ${
+                    onEmailCheckboxChange && !isDisabled ? 'cursor-pointer' : ''
+                  } ${
+                    isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {onEmailCheckboxChange && isChecked ? (
+                    <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  ) : onEmailCheckboxChange && isHovered && !isDisabled ? (
+                    <div className="w-10 h-10 border-2 border-gray-400 rounded-full flex items-center justify-center bg-white">
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                      {getInitials(email.sender)}
+                    </div>
+                  )}
                 </div>
                 
-                <h3 className={`text-sm mb-1 truncate ${
-                  email.isRead 
-                    ? 'text-gray-700' 
-                    : 'text-gray-900 font-medium'
-                }`}>
-                  {email.subject}
-                </h3>
-                
-                <p className="text-xs text-gray-500 line-clamp-2">
-                  {email.snippet}
-                </p>
+                {/* Email Content */}
+                <div 
+                  className="flex-1 min-w-0"
+                  onClick={() => onEmailSelect(email)}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center space-x-2 min-w-0 flex-1">
+                      <span className={`font-medium truncate ${
+                        email.isRead 
+                          ? 'text-gray-700' 
+                          : 'text-gray-900'
+                      }`}>
+                        {email.sender}
+                      </span>
+                      {email.replySent && (
+                        <span className="flex items-center space-x-1 text-green-600 text-xs font-medium" title="Đã gửi trả lời">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span>Đã trả lời</span>
+                        </span>
+                      )}
+                      {!email.replySent && email.draftId && (
+                        <span className="flex items-center space-x-1 text-purple-600 text-xs font-medium bg-purple-100 px-2 py-0.5 rounded-full" title="Có gợi ý AI">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                          <span>Có gợi ý</span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                      {formatTime(email.timestamp)}
+                    </span>
+                  </div>
+                  
+                  <h3 className={`text-sm mb-1 truncate ${
+                    email.isRead 
+                      ? 'text-gray-700' 
+                      : 'text-gray-900 font-medium'
+                  }`}>
+                    {email.subject}
+                  </h3>
+                  
+                  <p className="text-xs text-gray-500 line-clamp-2">
+                    {email.snippet}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         
         {/* Load More Button - Inside scrollable area */}
         {hasNextPage && (
@@ -142,7 +180,7 @@ export default function EmailList({
                   Đang tải...
                 </span>
               ) : (
-                'Tải thêm email'
+                'Tải thêm'
               )}
             </button>
           </div>

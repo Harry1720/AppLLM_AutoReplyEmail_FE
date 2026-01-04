@@ -82,9 +82,9 @@ export default function EmailContent({ email }: EmailContentProps) {
   const isHTML = email.body.trim().startsWith('<');
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col">
       {/* Email Header */}
-      <div className="border-b border-gray-200 p-6">
+      <div className="border-b border-gray-200 p-6 bg-white">
         <div className="mb-4">
           <h1 className="text-2xl font-semibold text-gray-900 mb-2">
             {email.subject}
@@ -115,7 +115,7 @@ export default function EmailContent({ email }: EmailContentProps) {
       </div>
 
       {/* Email Body */}
-      <div className="flex-1 overflow-y-auto p-6 bg-gray-200">
+      <div className="p-6 bg-white">
         {isHTML ? (
           <div 
             ref={contentRef}

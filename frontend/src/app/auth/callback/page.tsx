@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation'; // Dùng để đọc dữ liệu trên thanh địa chỉ (URL)
+import Image from 'next/image';
 import { exchangeCodeForToken, syncAiData, checkSyncStatus } from '@/services/api';
 
 export default function AuthCallbackPage() {
@@ -98,8 +99,20 @@ export default function AuthCallbackPage() {
   }, [searchParams, router]);// useEffect sẽ chạy lại nếu searchParams hoặc router thay đổi (thực tế chỉ chạy 1 lần khi load trang)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br to-sky-100 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+    <div className="min-h-screen relative flex items-center justify-center px-4">
+      {/* Background image with overlay */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/uth.png"
+          alt="Background"
+          fill
+          className="object-cover"
+          priority
+        />
+        <div className="absolute inset-0 bg-white/30"></div>
+      </div>
+      
+      <div className="max-w-md w-full bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-8 text-center relative z-10">
         {isProcessing ? (
           <>
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>

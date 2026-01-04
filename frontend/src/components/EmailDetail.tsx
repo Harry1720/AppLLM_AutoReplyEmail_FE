@@ -81,7 +81,7 @@ export default function EmailDetail({ email }: EmailDetailProps) {
           {email.attachments && email.attachments.length > 0 && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h3 className="text-sm font-medium text-gray-900 mb-3">
-                Tệp đính kèm ({email.attachments.length}) <br/><br/>(Ứng dụng không hỗ trợ xem/tải tệp đính kèm. Vui lòng thực hiện ở Gmail.)
+                Tệp đính kèm ({email.attachments.length}) <br/><br/>(Ứng dụng không hỗ trợ xem/tải tệp đính kèm. Vui lòng thực hiện ở Gmail)
               </h3>
               <div className="space-y-2">
                 {email.attachments.map((attachment, index) => (

@@ -16,6 +16,8 @@ export default function ComposePage() {
   const [emails, setEmails] = useState<Email[]>([]); // Danh sách email đã gửi
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null); // Email đang được chọn để xem chi tiết
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false); // Loading khi fetch email detail
+  const [isSyncing, setIsSyncing] = useState(false); // Trạng thái khi bấm nút "Đồng bộ"
   const [error, setError] = useState<string | null>(null);
 
   // Pagination (Phân trang)
@@ -36,12 +38,14 @@ export default function ComposePage() {
   }, [router]);
 
   // Load sent emails
-  const loadSentEmails = useCallback(async (pageToken?: string, append = false) => {
+  const loadSentEmails = useCallback(async (pageToken?: string, showLoading = true, append = false) => {
     try {
-      if (append) {
-        setIsLoadingMore(true);
-      } else {
-        setIsLoading(true);
+      if (showLoading) {
+        if (append) {
+          setIsLoadingMore(true);
+        } else {
+          setIsLoading(true);
+        }
       }
       setError(null);
       
@@ -134,22 +138,27 @@ export default function ComposePage() {
       }
     } finally {
       setIsLoading(false);
+      setIsSyncing(false);
       setIsLoadingMore(false);
     }
   }, [router]);
 
+  // Handler cho sync từ header (đồng bộ thủ công) - không reload toàn bộ trang
+  const handleSyncFromHeader = useCallback(async () => {
+    if (isSyncing) return; // Tránh sync nhiều lần
+    
+    setIsSyncing(true);
+    await loadSentEmails(undefined, false); // Sync mà không show loading spinner
+  }, [isSyncing, loadSentEmails]);
+
   useEffect(() => {
-    // Load sent emails or show composer based on localStorage
-    // Kiểm tra trong LocalStorage có bản nháp chưa gửi không?
-    const savedDraft = localStorage.getItem('email_draft');
-    if (savedDraft) {
-      setShowComposer(true); // Nếu có -> Tự động bật chế độ soạn thảo
-    }
+    // Load sent emails on mount
     loadSentEmails(); // Tải danh sách email đã gửi
   }, [loadSentEmails]);
 
   //Chọn xem email
   const handleEmailSelect = async (email: Email) => {
+    setIsLoadingDetail(true); // Bật loading spinner
     try {
       setShowComposer(false); // Tắt khung soạn thảo đi
       setSelectedEmail(null); // Reset chọn email
@@ -170,6 +179,8 @@ export default function ComposePage() {
     } catch (error: any) {
       console.error('Error loading email detail:', error);
       setError(error.message || 'Failed to load email detail');
+    } finally {
+      setIsLoadingDetail(false); // Tắt loading spinner
     }
   };
 
@@ -212,59 +223,68 @@ export default function ComposePage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <Header />
-      
-      <main className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Email List */}
-        <div className="w-96 border-r border-gray-200 bg-white flex flex-col">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Hộp thư đã gửi</h2>
-            <button
-              onClick={handleNewEmail}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              title="Soạn email mới"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="flex-1 overflow-hidden">
-            {isLoading ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            ) : error ? (
-              <div className="h-full flex items-center justify-center p-4">
-                <div className="text-center">
-                  <p className="text-red-600 mb-2">{error}</p>
-                  <button
-                    onClick={() => loadSentEmails()}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Thử lại
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <EmailList
-                emails={emails}
-                selectedEmail={showComposer ? null : selectedEmail}
-                onEmailSelect={handleEmailSelect}
-                onLoadMore={handleLoadMore}
-                hasNextPage={!!nextPageToken}
-                isLoadingMore={isLoadingMore}
-              />
-            )}
-          </div>
+    <div className="h-screen flex bg-gray-50">
+      {/* Left Panel - Email List */}
+      <div className="w-90 border-r border-gray-200 bg-white flex flex-col">
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Hộp thư đã gửi</h2>
+          <button
+            onClick={handleNewEmail}
+            className="text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Soạn email mới"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
         </div>
+          
+        <div className="flex-1 overflow-hidden">
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : error ? (
+            <div className="h-full flex items-center justify-center p-4">
+              <div className="text-center">
+                <p className="text-red-600 mb-2">{error}</p>
+                <button
+                  onClick={() => loadSentEmails()}
+                  className="text-blue-600 hover:underline"
+                >
+                  Thử lại
+                </button>
+              </div>
+            </div>
+          ) : (
+            <EmailList
+              emails={emails}
+              selectedEmail={showComposer ? null : selectedEmail}
+              onEmailSelect={handleEmailSelect}
+              onLoadMore={handleLoadMore}
+              hasNextPage={!!nextPageToken}
+              isLoadingMore={isLoadingMore}
+            />
+          )}
+        </div>
+      </div>
 
-        {/* Right Panel - Email Detail or Composer */}
-        <div className="flex-1 bg-white">
+      {/* Right Content Area with Header */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onSync={handleSyncFromHeader} isSyncing={isSyncing} />
+        <div className="flex-1 bg-white overflow-hidden">
           {showComposer ? (
             <EmailComposer onSend={handleSendEmail} />
+          ) : isLoadingDetail ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <svg className="animate-spin h-8 w-8 text-blue-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-sm text-gray-500">Đang tải email...</p>
+              </div>
+            </div>
           ) : selectedEmail ? (
             <EmailDetail email={selectedEmail} />
           ) : (
@@ -278,7 +298,8 @@ export default function ComposePage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
+
   );
 }

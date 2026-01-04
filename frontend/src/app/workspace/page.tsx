@@ -7,6 +7,7 @@ import EmailList from '@/components/EmailList';
 import EmailContent from '@/components/EmailContent';
 import AiSuggestionPanel from '@/components/AiSuggestionPanel';
 import Header from '@/components/Header';
+import FloatingAiButton from '@/components/FloatingAiButton';
 
 // Import các hàm gọi API (Service)
 import { fetchEmails, fetchEmailDetail, getAuthToken, getUserInfo, generateAiReply, sendEmail, getAllDrafts, getSentEmails } from '@/services/api';
@@ -29,14 +30,9 @@ export default function WorkspacePage() {
   // Checkbox states
   const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]); // Danh sách ID các email được tích chọn checkbox
   const [isGeneratingAi, setIsGeneratingAi] = useState(false); // Trạng thái đang đợi AI viết
-
-  // Check authentication on mount
-  useEffect(() => {
-    const token = getAuthToken();
-    if (!token) {
-      router.push('/');
-    }
-  }, [router]);
+  
+  // AI Panel visibility state
+  const [isAiPanelVisible, setIsAiPanelVisible] = useState(true); // Quản lý hiển thị/ẩn panel AI
 
   // HÀM TẢI EMAIL
   // Sử dụng useCallback để tránh re-create function
@@ -178,6 +174,7 @@ export default function WorkspacePage() {
     }
   }, [router]);
 
+  // Load emails on mount - chỉ chạy 1 lần
   useEffect(() => {
     const token = getAuthToken();
     const userInfo = getUserInfo();
@@ -189,7 +186,8 @@ export default function WorkspacePage() {
 
     // Load emails lần đầu
     loadEmails(undefined, true);
-  }, [router, loadEmails]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency - chỉ chạy 1 lần khi mount
 
   // Handler cho sync từ header (đồng bộ thủ công) - không reload toàn bộ trang
   const handleSyncFromHeader = useCallback(async () => {
@@ -198,6 +196,14 @@ export default function WorkspacePage() {
     setIsSyncing(true);
     await loadEmails(undefined, false); // Sync mà không show loading spinner
   }, [isSyncing, loadEmails]);
+
+  // Handler khi xóa draft - tự động tải lại trang
+  const handleDraftDeleted = useCallback(() => {
+    // Đợi 1 giây rồi tải lại trang để người dùng thấy toast message
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  }, []);
 
   //Chọn xem chi tiết 1 Email
   const handleEmailSelect = async (email: Email) => {
@@ -261,6 +267,11 @@ export default function WorkspacePage() {
       
       console.log('Selected email with draft info:', fullEmail);
       setSelectedEmail(fullEmail);
+      
+      // Tự động mở panel AI nếu có draft
+      if (fullEmail.draftId) {
+        setIsAiPanelVisible(true);
+      }
       
       // Đánh dấu email trong danh sách là "Đã đọc"
       setEmails((prev: Email[]) => prev.map((e: Email) => 
@@ -332,9 +343,12 @@ export default function WorkspacePage() {
           draftId: response.draft_id,
           hasAiSuggestion: true 
         });
+        
+        // Tự động mở panel AI khi tạo gợi ý mới
+        setIsAiPanelVisible(true);
       }
       
-      showToast('Gợi ý AI đã được tạo lại!', 'success');
+      showToast('Gợi ý AI đã được tạo!', 'success');
     } catch (err) {
       console.error('Error regenerating AI:', err);
       const errorMessage = err instanceof Error ? err.message : 'Không thể tạo gợi ý AI';
@@ -418,123 +432,101 @@ export default function WorkspacePage() {
     }
   };
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="h-screen flex flex-col bg-gray-50">
-        <Header onSync={handleSyncFromHeader} />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Đang tải email...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="h-screen flex flex-col bg-gray-50">
-        <Header onSync={handleSyncFromHeader} />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-md">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Lỗi tải dữ liệu</h3>
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={() => loadEmails()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-            >
-              Thử lại
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <Header onSync={handleSyncFromHeader} isSyncing={isSyncing} />
-      
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel - Email List */}
-        <div className="w-90 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Hộp thư của bạn
-                </h2>
-                {selectedEmailIds.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
+    <div className="h-screen flex bg-gray-50">
+      {/* Left Panel - Email List */}
+      <div className="w-90 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Hộp thư của bạn
+              </h2>
+              {selectedEmailIds.length > 0 && (
+                <div className="flex items-center space-x-2 mt-1">
+                  <p className="text-xs text-gray-500">
                     Đã chọn {selectedEmailIds.length}/5 email
                   </p>
-                )}
-              </div>
-              {isSyncing && (
-                <div className="flex items-center text-sm text-blue-600">
-                  <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Đang đồng bộ...
+                  {!isGeneratingAi && (
+                    <button
+                      onClick={() => setSelectedEmailIds([])}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Bỏ chọn tất cả
+                    </button>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <EmailList 
-            emails={emails}
-            selectedEmail={selectedEmail}
-            onEmailSelect={handleEmailSelect}
-            selectedEmailIds={selectedEmailIds}
-            onEmailCheckboxChange={handleEmailCheckboxChange}
-            hasNextPage={!!nextPageToken}
-            onLoadMore={handleLoadMore}
-            isLoadingMore={isLoadingMore}
-          />
-          </div>
-        </div>
-
-        {/* Middle Panel - Email Content */}
-        <div className="flex-1 w-2xl bg-white border-r border-gray-200 flex flex-col">
-          {/* Generate AI Button */}
-          {selectedEmailIds.length > 0 && (
-            <div className="border-b border-gray-200 p-4 bg-blue-50">
-              <button
-                onClick={handleGenerateAiReplies}
-                disabled={isGeneratingAi}
-                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 cursor-pointer"
-              >
-                {isGeneratingAi ? (
-                  <>
+            <div className="flex items-center space-x-2">
+              {/* Generate AI Button */}
+              {selectedEmailIds.length > 0 && (
+                <button
+                  onClick={handleGenerateAiReplies}
+                  disabled={isGeneratingAi}
+                  className="py-2 px-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 cursor-pointer"
+                  title="Tạo câu trả lời với AI"
+                >
+                  {isGeneratingAi ? (
                     <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Đang tạo câu trả lời. Vui lòng đợi một lát...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    <span>Tạo câu trả lời với AI ({selectedEmailIds.length})</span>
-                  </>
-                )}
-              </button>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <span className="font-medium">({selectedEmailIds.length})</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
+          </div>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : error ? (
+            <div className="h-full flex items-center justify-center p-4">
+              <div className="text-center">
+                <p className="text-red-600 mb-2">{error}</p>
+                <button
+                  onClick={() => loadEmails()}
+                  className="text-blue-600 hover:underline"
+                >
+                  Thử lại
+                </button>
+              </div>
+            </div>
+          ) : (
+            <EmailList 
+              emails={emails}
+              selectedEmail={selectedEmail}
+              onEmailSelect={handleEmailSelect}
+              selectedEmailIds={selectedEmailIds}
+              onEmailCheckboxChange={handleEmailCheckboxChange}
+              hasNextPage={!!nextPageToken}
+              onLoadMore={handleLoadMore}
+              isLoadingMore={isLoadingMore}
+            />
           )}
+        </div>
+      </div>
+
+        {/* Right Content Area with Header */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onSync={handleSyncFromHeader} isSyncing={isSyncing} />
           
-          {/* Email Content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 flex overflow-hidden">
+            {/* Middle Panel - Email Content */}
+            <div className="flex-1 w-2xl bg-white border-r border-gray-200 flex flex-col">
+              
+              {/* Email Content */}
+              <div className="flex-1 overflow-y-auto">
             {isLoadingDetail ? (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
@@ -560,39 +552,44 @@ export default function WorkspacePage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
-        </div>
 
-        {/* Right Panel - AI Suggestions */}
-        <div className="flex-1 max-w-120 bg-white">
-          {isLoadingDetail ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <svg className="animate-spin h-12 w-12 mx-auto text-purple-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p className="mt-4 text-sm text-gray-600">Đang tải trợ lý AI...</p>
-              </div>
+          {/* Right Panel - AI Suggestions */}
+          {/* Hiển thị panel AI chỉ khi có draft và không đang loading email detail */}
+          {selectedEmail && selectedEmail.draftId && !isLoadingDetail && isAiPanelVisible && (
+            <div className="flex-1 max-w-90 bg-white transition-all duration-300 ease-in-out">
+              <AiSuggestionPanel 
+                key={`${selectedEmail.id}-${selectedEmail.replySent}`}
+                email={selectedEmail}
+                onSendReply={handleSendReply}
+                onRegenerateAi={handleRegenerateAi}
+                onClose={() => setIsAiPanelVisible(false)}
+                onDraftDeleted={handleDraftDeleted}
+              />
             </div>
-          ) : selectedEmail ? (
-            <AiSuggestionPanel 
-              email={selectedEmail}
-              onSendReply={handleSendReply}
-              onRegenerateAi={handleRegenerateAi}
+          )}
+          
+          {/* Nút xem lại gợi ý khi panel bị đóng */}
+          {selectedEmail && selectedEmail.draftId && !isAiPanelVisible && (
+            <button
+              onClick={() => setIsAiPanelVisible(true)}
+              className="fixed right-4 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-3 rounded-l-lg shadow-lg hover:from-purple-600 hover:to-pink-600 transition-all duration-200 z-10 flex items-center space-x-2 cursor-pointer"
+              title="Xem nội dung gợi ý"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="font-medium">{selectedEmail.replySent ? 'Xem trả lời' : 'Xem gợi ý'}</span>
+            </button>
+          )}
+          
+          {/* Floating AI Button - Chỉ hiện khi mở email detail, chưa có draft và chưa gửi */}
+          {selectedEmail && !selectedEmail.draftId && !selectedEmail.replySent && !isLoadingDetail && (
+            <FloatingAiButton
+              onClick={() => handleRegenerateAi(selectedEmail.id)}
+              isGenerating={isGeneratingAi}
             />
-          ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
-              <div className="text-center px-4">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Trợ lý AI</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Gợi ý trả lời email từ AI. <br />Hãy chọn tối đa 5 email từ danh sách để AI giúp bạn trả lời.
-                </p>
-              </div>
-            </div>
           )}
         </div>
       </div>

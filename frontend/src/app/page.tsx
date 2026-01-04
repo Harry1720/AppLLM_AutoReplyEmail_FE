@@ -39,12 +39,24 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br to-sky-100 flex items-center justify-center px-4">
-      <div className="max-w-2xl w-full space-y-8 text-center">
+    <div className="min-h-screen relative flex items-center justify-center px-4 overflow-hidden">
+      {/* Background Image with Blur */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/login.png"
+          alt="Background"
+          fill
+          className="object-cover"
+          priority
+        />
+      </div>
+
+      {/* Glass Morphism Container */}
+      <div className="max-w-2xl w-full space-y-8 text-center relative z-10 backdrop-blur-md bg-white/50 rounded-3xl shadow-2xl border border-white/20 p-8 md:p-12">
         <div className="space-y-4">
 
           {/* Logo */}
-          <div className="mx-auto mb-0 flex items-center justify-center w-64 h-64">
+          <div className="mx-auto -mb-8 -mt-20 flex items-center justify-center w-64 h-64">
             <Image
               src="/logo.png"
               alt="Logo"
@@ -57,23 +69,23 @@ export default function LandingPage() {
 
           {/* App Name & Description */}
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">
+            <h1 className="text-4xl font-bold text-gray-900 mb-3 drop-shadow-lg">
               Trợ lý Email thông minh
             </h1>
-            <p className="text-gray-600 text-lg">
-              Ứng dụng trả lời email tự động thông minh với Trí tuệ nhân tạo
-            </p>
+            {/* <p className="text-gray-800 text-1xl font-medium drop-shadow">
+             Trả lời email tự động với Trí tuệ nhân tạo
+            </p> */}
           </div>
 
           {/* Features */}
-          <div className="space-y-3 text-1xl text-gray-700">
+          <div className="space-y-3 text-1xl text-gray-900 font-medium">
             <div className="flex items-center justify-center space-x-2">
               <span className="text-green-500">✨</span>
-              <span>Gợi ý trả lời các email bạn nhận được</span>
+              <span>Gợi ý trả lời các email với AI</span>
             </div>
             <div className="flex items-center justify-center space-x-2">
               <span className="text-blue-500">🎯</span>
-              <span>Phân tích ngữ cảnh thông minh từ các email bạn đã gửi</span>
+              <span>Phân tích ngữ cảnh từ các email đã gửi</span>
             </div>
             <div className="flex items-center justify-center space-x-2">
               <span className="text-purple-500">⚡</span>
@@ -83,11 +95,11 @@ export default function LandingPage() {
         </div>
 
         {/* Google Login Button */}
-        <div className="pt-6">
+        <div className="">
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading} //Nếu đang tải (isLoading là true) thì nút bị vô hiệu hóa
-            className="w-full bg-white border border-gray-300 rounded-lg px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="mx-auto bg-white/90 backdrop-blur-sm border border-white/30 rounded-lg px-32 py-3 text-gray-800 font-medium hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center space-x-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg"
           >
             {isLoading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
@@ -108,12 +120,12 @@ export default function LandingPage() {
         </div>
 
         {/* Footer */}
-        <div className="pt-2 text-1xl text-amber-700">
+        <div className="pt-2 text-1xl -mt-5 text-gray-900 font-medium drop-shadow">
           <p>Bằng cách đăng nhập, bạn đồng ý với điều khoản sử dụng của chúng tôi.</p>
         </div>
-        <div className="pt-2 text-1xl text-black">
+        {/* <div className="pt-2 text-1xl text-black">
           <p>Thực hiện: Quốc Bảo - Thái Bình.</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

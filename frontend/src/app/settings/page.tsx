@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import Header from '@/components/Header';
 import { fetchUserProfile, fetchEmails, deleteUserAccount, logout, getAuthToken } from '@/services/api';
 import { useToast } from '@/components/ToastContainer';
@@ -124,20 +125,37 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg">
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Cài đặt
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Quản lý tài khoản và kiểm tra thời gian đồng bộ
-            </p>
-          </div>
+    <div className="h-screen overflow-hidden">
+      {/* Header với background riêng */}
+      <div className="relative z-20 bg-white">
+        <Header />
+      </div>
+
+      {/* Background Image cho phần content */}
+      <div className="h-full relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/login.png"
+            alt="Background"
+            fill
+            className="object-cover opacity-40"
+            priority
+          />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 h-full overflow-y-auto">
+          <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <div className="bg-white/90 backdrop-blur-sm shadow-xl rounded-lg border border-white/20">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Cài đặt
+                </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Quản lý tài khoản và kiểm tra thời gian đồng bộ
+              </p>
+            </div>
 
           <div className="divide-y divide-gray-200">
             {/* User Information */}
@@ -216,7 +234,7 @@ export default function SettingsPage() {
             {/* Account Actions */}
             <div className="p-6">
               <div className="flex flex-wrap gap-4 items-center justify-center">
-                <Link
+                {/* <Link
                   href="/workspace"
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md bg-green-500 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-white"
                 >
@@ -224,7 +242,7 @@ export default function SettingsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
                   Trở về trang làm việc
-                </Link>
+                </Link> */}
 
                 <button
                   onClick={handleLogout}
@@ -243,13 +261,15 @@ export default function SettingsPage() {
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  Ngắt kết nối tài khoản với ứng dụng này
+                  Ngắt kết nối với ứng dụng
                 </button>
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
