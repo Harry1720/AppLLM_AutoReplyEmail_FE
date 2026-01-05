@@ -323,7 +323,7 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi, 
                 suppressContentEditableWarning
                 spellCheck={false}
                 onInput={(e) => setEditedContent(e.currentTarget.innerHTML)}
-                className="w-full min-h-96 max-h-none p-3  overflow-y-auto bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent prose prose-sm max-w-none"
+                className="w-full min-h-96 max-h-none p-1 overflow-y-auto bg-white text-[15px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent prose prose-sm max-w-none"
                 style={{ whiteSpace: 'pre-wrap' }}
               />
             </div>
@@ -334,22 +334,22 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi, 
             <button
               onClick={handleSend}
               disabled={isSending || !editedContent.trim() || isDraftDeleted}
-              className="text-blue-600 py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="text-blue-600 py-2.5 px-4 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSending ? (
                 <>
-                  <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  {/* <span>Đang gửi...</span> */}
+                  <span>Đang gửi...</span>
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
-                  {/* <span>Gửi</span> */}
+                  <span>Gửi</span>
                 </>
               )}
             </button>
@@ -357,23 +357,23 @@ export default function AiSuggestionPanel({ email, onSendReply, onRegenerateAi, 
             <button
               onClick={handleRegenerate}
               disabled={isDraftDeleted}
-              className="text-gray-700 py-2 px-3 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="text-gray-700 py-2.5 px-4 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              {/* <span>Tạo lại</span> */}
+              <span>Tạo lại</span>
             </button>
             
             <button
               onClick={handleDeleteDraft}
               disabled={isSending || isDraftDeleted || !email.draftId}
-              className="text-red-600 py-2 px-3 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="text-red-600 py-2.5 px-4 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              {/* <span>Xóa</span> */}
+              <span>Xóa</span>
             </button>
           </div>
         </>
